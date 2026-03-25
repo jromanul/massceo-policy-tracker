@@ -77,7 +77,7 @@ export async function getLegislativeItems(filters: LegislativeItemFilters = {}) 
       where,
       skip,
       take: pageSize,
-      orderBy: [{ eoRelevanceScore: 'desc' }, { priority: 'asc' }, { updatedAt: 'desc' }],
+      orderBy: [{ statusDate: 'desc' }, { updatedAt: 'desc' }],
       include: {
         staffLead: { select: { id: true, name: true, email: true, role: true } },
         tags: true,

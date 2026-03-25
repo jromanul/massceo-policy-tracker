@@ -21,8 +21,6 @@ import {
 import { resolveCommitteeName } from '@/lib/constants'
 import { formatDate, formatCurrency, truncate } from '@/lib/utils'
 import { SourceLabel } from '@/components/shared/source-label'
-import { DataStatusStrip } from '@/components/shared/data-status-strip'
-import { getDashboardStatusData } from '@/services/dashboard-status'
 
 interface RecentItem {
   id: number
@@ -208,13 +206,7 @@ const typeHref = (type: string, id: number) => {
 }
 
 export default async function DashboardPage() {
-  const [data, statusData] = await Promise.all([
-    getDashboardData(),
-    getDashboardStatusData().catch((e) => {
-      console.error('[Dashboard] Failed to load status data:', e)
-      return null
-    }),
-  ])
+  const data = await getDashboardData()
 
   const stats = data?.stats ?? {
     totalLegislation: 0,
@@ -239,18 +231,6 @@ export default async function DashboardPage() {
           Welcome to the MassCEO Policy Tracker. Here&apos;s your current legislative and policy overview.
         </p>
       </div>
-
-      {/* Data Status & Source Health */}
-      {statusData && (
-        <div className="space-y-1">
-          <DataStatusStrip data={statusData} />
-          <div className="flex justify-end">
-            <Link href="/admin/sync-status" className="text-xs text-slate-400 hover:text-slate-600">
-              View full sync status
-            </Link>
-          </div>
-        </div>
-      )}
 
       {/* ═══════════════════════════════════════════════════════════════
           Section A: External Policy & Legislative Monitoring
