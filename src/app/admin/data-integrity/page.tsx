@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { PageHeader } from '@/components/layout/page-header'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'

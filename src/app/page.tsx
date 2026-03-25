@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { getDashboardData as fetchDashboard } from '@/services/dashboard'
 import {
