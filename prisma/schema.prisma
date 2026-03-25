@@ -1,0 +1,557 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  STAFF_ADMIN
+  STAFF_EDITOR
+  BOARD_MEMBER
+  READ_ONLY
+}
+
+enum Jurisdiction {
+  MASSACHUSETTS
+  FEDERAL
+}
+
+enum Chamber {
+  HOUSE
+  SENATE
+  JOINT
+}
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFORMATIONAL
+}
+
+enum LegislativeStatus {
+  FILED
+  IN_COMMITTEE
+  REPORTED_OUT
+  PASSED_ONE_CHAMBER
+  PASSED_BOTH_CHAMBERS
+  ENACTED
+  VETOED
+  DEAD
+  MONITORING
+}
+
+enum BudgetSourceStage {
+  GOVERNOR
+  HOUSE
+  SENATE
+  CONFERENCE
+  FINAL
+  SUPPLEMENTAL
+}
+
+enum BudgetStatus {
+  PROPOSED
+  UNDER_REVIEW
+  AMENDED
+  ADOPTED
+  REJECTED
+  MONITORING
+}
+
+enum HearingStatus {
+  UPCOMING
+  COMPLETED
+  CANCELED
+  MONITORING_ONLY
+}
+
+enum PolicyDisposition {
+  SUBMITTED
+  UNDER_REVIEW
+  NEEDS_RESEARCH
+  REFERRED_FOR_DISCUSSION
+  MONITORING
+  DEFERRED
+  CLOSED
+  ARCHIVED
+}
+
+enum BoardDiscussionStatus {
+  NOT_DISCUSSED
+  SCHEDULED
+  DISCUSSED
+  ACTION_REQUIRED
+  RESOLVED
+}
+
+enum BoardInterestLevel {
+  HIGH
+  MEDIUM
+  LOW
+  NONE
+}
+
+enum GovernanceLabel {
+  STAFF_ANALYSIS
+  MONITORING_NOTE
+  BOARD_IDEA
+  BOARD_DISCUSSION
+  FORMAL_RECOMMENDATION
+  ARCHIVED
+}
+
+enum KnowledgeEntryType {
+  ARCHIVED_LEGISLATION
+  ARCHIVED_BUDGET
+  ARCHIVED_POLICY_IDEA
+  DISCUSSION_CONTEXT
+  HANDOFF_NOTE
+  HISTORICAL_NOTE
+  RESEARCH_SUMMARY
+  UNRESOLVED_QUESTION
+  BOARD_CONTEXT
+}
+
+enum DataSource {
+  MANUAL
+  SEED
+  MA_LEGISLATURE
+  CONGRESS_GOV
+  CSV_IMPORT
+  JSON_IMPORT
+}
+
+enum AmendmentStatus {
+  FILED
+  PENDING
+  ADOPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum AmendmentType {
+  AMENDMENT
+  EARMARK
+}
+
+enum TrackingTier {
+  IMPORTED
+  REVIEWED
+  ACTIVELY_TRACKED
+  ARCHIVED_NOT_RELEVANT
+}
+
+enum HearingType {
+  LEGISLATIVE
+  BUDGET
+  PUBLIC_COMMENT
+  OTHER
+}
+
+enum PolicyOriginType {
+  BOARD_MEMBER
+  STAFF
+  EXTERNAL_STAKEHOLDER
+  COMMITTEE
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  role      Role
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  staffLeadLegislation LegislativeItem[] @relation("StaffLeadLegislation")
+  staffLeadBudget      BudgetItem[]      @relation("StaffLeadBudget")
+  responsibleHearings  Hearing[]         @relation("ResponsibleStaff")
+  submittedPolicies    PolicyIdea[]      @relation("SubmittedBy")
+  uploadedDocuments    Document[]        @relation("UploadedBy")
+  notes                Note[]            @relation("NoteAuthor")
+  historyEntries       HistoryEntry[]    @relation("HistoryAuthor")
+  createdKnowledge     KnowledgeEntry[]  @relation("KnowledgeAuthor")
+}
+
+model LegislativeItem {
+  id                  Int               @id @default(autoincrement())
+  jurisdiction        Jurisdiction
+  billNumber          String
+  sessionNumber       String?
+  title               String
+  shortSummary        String?
+  detailedNotes       String?
+  chamber             Chamber?
+  primarySponsor      String?
+  coSponsors          Json      @default("[]")
+  assignedCommittee   String?
+  status              LegislativeStatus @default(FILED)
+  rawSourceStatus     String?
+  statusDate          DateTime?
+  hearingDates        Json      @default("[]")
+  reportingDeadlines  Json      @default("[]")
+  nextExpectedMilestone String?
+  priority            Priority          @default(MEDIUM)
+  issueCategory       String?
+  relevanceToMassCEO  String?
+  relevanceToEOAB     String?
+  boardInterestLevel  BoardInterestLevel @default(NONE)
+  eoRelevanceScore    Int               @default(0)
+  externalLinks       Json      @default("[]")
+  archived            Boolean           @default(false)
+  trackingTier        TrackingTier      @default(IMPORTED)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  // Provenance / ingestion tracking
+  dataSource          DataSource        @default(MANUAL)
+  sourceUrl           String?
+  sourceExternalId    String?
+  lastSyncedAt        DateTime?
+  sourceRetrievedAt   DateTime?
+  rawSourceData       Json?
+
+  // Relations
+  staffLead           User?             @relation("StaffLeadLegislation", fields: [staffLeadId], references: [id])
+  staffLeadId         Int?
+  tags                Tag[]             @relation("LegislationTags")
+  documents           Document[]        @relation("LegislationDocuments")
+  notes               Note[]            @relation("LegislationNotes")
+  history             HistoryEntry[]    @relation("LegislationHistory")
+  hearings            Hearing[]         @relation("LegislationHearings")
+  budgetItems         BudgetItem[]      @relation("LegislationBudget")
+  policyIdeas         PolicyIdea[]      @relation("LegislationPolicies")
+  externalSourceRefs  ExternalSourceRef[]
+  knowledgeEntries    KnowledgeEntry[]  @relation("LegislationKnowledge")
+  amendments          Amendment[]       @relation("LegislationAmendments")
+  billActions         BillAction[]      @relation("BillActions")
+
+  @@unique([jurisdiction, billNumber, sessionNumber])
+  @@index([dataSource])
+  @@index([sourceExternalId])
+  @@index([eoRelevanceScore])
+  @@index([trackingTier])
+}
+
+model BudgetItem {
+  id                    Int              @id @default(autoincrement())
+  fiscalYear            Int
+  name                  String
+  lineItemNumber        String?
+  jurisdiction          Jurisdiction     @default(MASSACHUSETTS)
+  sourceStage           BudgetSourceStage
+  amountProposed        Decimal?
+  amountAdopted         Decimal?
+  priorYearAmount       Decimal?
+  status                BudgetStatus     @default(PROPOSED)
+  statusDate            DateTime?
+  significanceToMassCEO String?
+  notes                 String?
+  deadlines             Json      @default("[]")
+  priority              Priority         @default(MEDIUM)
+  boardDiscussionStatus BoardDiscussionStatus @default(NOT_DISCUSSED)
+  archived              Boolean          @default(false)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  // Provenance / ingestion tracking
+  dataSource            DataSource       @default(MANUAL)
+  sourceUrl             String?
+  sourceExternalId      String?
+  lastSyncedAt          DateTime?
+  sourceRetrievedAt     DateTime?
+  rawSourceData         Json?
+  rawSourceStatus       String?
+
+  // Relations
+  staffLead             User?            @relation("StaffLeadBudget", fields: [staffLeadId], references: [id])
+  staffLeadId           Int?
+  tags                  Tag[]            @relation("BudgetTags")
+  documents             Document[]       @relation("BudgetDocuments")
+  notes_rel             Note[]           @relation("BudgetNotes")
+  history               HistoryEntry[]   @relation("BudgetHistory")
+  legislativeItems      LegislativeItem[] @relation("LegislationBudget")
+  hearings              Hearing[]        @relation("BudgetHearings")
+  policyIdeas           PolicyIdea[]     @relation("BudgetPolicies")
+  knowledgeEntries      KnowledgeEntry[] @relation("BudgetKnowledge")
+  budgetStages          BudgetStage[]    @relation("BudgetStages")
+  amendments            Amendment[]      @relation("BudgetAmendments")
+
+  @@index([dataSource])
+  @@index([sourceExternalId])
+}
+
+model Hearing {
+  id               Int           @id @default(autoincrement())
+  title            String
+  eventType        String?
+  date             DateTime
+  time             String?
+  location         String?
+  committeeOrBody  String?
+  jurisdiction     Jurisdiction?
+  summary          String?
+  preparationNotes String?
+  followUpNotes    String?
+  status           HearingStatus @default(UPCOMING)
+  hearingType      HearingType   @default(LEGISLATIVE)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // Provenance / ingestion tracking
+  dataSource        DataSource    @default(MANUAL)
+  sourceUrl         String?
+  sourceExternalId  String?
+  lastSyncedAt      DateTime?
+  sourceRetrievedAt DateTime?
+  rawSourceData     Json?
+  rawSourceStatus   String?
+
+  // Relations
+  responsibleStaff   User?             @relation("ResponsibleStaff", fields: [responsibleStaffId], references: [id])
+  responsibleStaffId Int?
+  tags               Tag[]             @relation("HearingTags")
+  documents          Document[]        @relation("HearingDocuments")
+  notes              Note[]            @relation("HearingNotes")
+  legislativeItems   LegislativeItem[] @relation("LegislationHearings")
+  budgetItems        BudgetItem[]      @relation("BudgetHearings")
+  knowledgeEntries   KnowledgeEntry[]  @relation("HearingKnowledge")
+
+  @@index([dataSource])
+  @@index([sourceExternalId])
+}
+
+model PolicyIdea {
+  id                     Int               @id @default(autoincrement())
+  title                  String
+  shortDescription       String?
+  fullDescription        String?
+  ideaSource             String?
+  dateSubmitted          DateTime          @default(now())
+  sourceMeetingOrCommittee String?
+  issueArea              String?
+  rationale              String?
+  staffNotes             String?
+  boardDiscussionNotes   String?
+  disposition            PolicyDisposition @default(SUBMITTED)
+  nextAction             String?
+  historicalContext       String?
+  openQuestions          String?
+  archived               Boolean           @default(false)
+  originType             PolicyOriginType?
+  relatedAgendaUrl       String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  // Provenance
+  dataSource             DataSource        @default(MANUAL)
+
+  // Relations
+  submittedBy            User?             @relation("SubmittedBy", fields: [submittedById], references: [id])
+  submittedById          Int?
+  tags                   Tag[]             @relation("PolicyTags")
+  documents              Document[]        @relation("PolicyDocuments")
+  notes                  Note[]            @relation("PolicyNotes")
+  history                HistoryEntry[]    @relation("PolicyHistory")
+  legislativeItems       LegislativeItem[] @relation("LegislationPolicies")
+  budgetItems            BudgetItem[]      @relation("BudgetPolicies")
+  knowledgeEntries       KnowledgeEntry[]  @relation("PolicyKnowledge")
+}
+
+model Document {
+  id         Int      @id @default(autoincrement())
+  title      String
+  filename   String
+  mimeType   String
+  size       Int
+  path       String
+  uploadedAt DateTime @default(now())
+
+  // Relations
+  uploadedBy       User?             @relation("UploadedBy", fields: [uploadedById], references: [id])
+  uploadedById     Int?
+  legislativeItems LegislativeItem[] @relation("LegislationDocuments")
+  budgetItems      BudgetItem[]      @relation("BudgetDocuments")
+  hearings         Hearing[]         @relation("HearingDocuments")
+  policyIdeas      PolicyIdea[]      @relation("PolicyDocuments")
+  knowledgeEntries KnowledgeEntry[]  @relation("KnowledgeDocuments")
+}
+
+model Tag {
+  id               Int               @id @default(autoincrement())
+  name             String            @unique
+  legislativeItems LegislativeItem[] @relation("LegislationTags")
+  budgetItems      BudgetItem[]      @relation("BudgetTags")
+  hearings         Hearing[]         @relation("HearingTags")
+  policyIdeas      PolicyIdea[]      @relation("PolicyTags")
+  knowledgeEntries KnowledgeEntry[]  @relation("KnowledgeTags")
+}
+
+model Note {
+  id              Int             @id @default(autoincrement())
+  content         String
+  governanceLabel GovernanceLabel
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  author           User?             @relation("NoteAuthor", fields: [authorId], references: [id])
+  authorId         Int?
+  legislativeItems LegislativeItem[] @relation("LegislationNotes")
+  budgetItems      BudgetItem[]      @relation("BudgetNotes")
+  hearings         Hearing[]         @relation("HearingNotes")
+  policyIdeas      PolicyIdea[]      @relation("PolicyNotes")
+  knowledgeEntries KnowledgeEntry[]  @relation("KnowledgeNotes")
+}
+
+model HistoryEntry {
+  id          Int      @id @default(autoincrement())
+  action      String
+  description String
+  details     String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  author          User?            @relation("HistoryAuthor", fields: [authorId], references: [id])
+  authorId        Int?
+  legislativeItem LegislativeItem? @relation("LegislationHistory", fields: [legislativeItemId], references: [id])
+  legislativeItemId Int?
+  budgetItem      BudgetItem?      @relation("BudgetHistory", fields: [budgetItemId], references: [id])
+  budgetItemId    Int?
+  policyIdea      PolicyIdea?      @relation("PolicyHistory", fields: [policyIdeaId], references: [id])
+  policyIdeaId    Int?
+}
+
+model KnowledgeEntry {
+  id                  Int                @id @default(autoincrement())
+  title               String
+  content             String
+  entryType           KnowledgeEntryType
+  handoffNotes        String?
+  unresolvedQuestions String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  // Relations
+  createdBy        User?             @relation("KnowledgeAuthor", fields: [createdById], references: [id])
+  createdById      Int?
+  tags             Tag[]             @relation("KnowledgeTags")
+  documents        Document[]        @relation("KnowledgeDocuments")
+  notes            Note[]            @relation("KnowledgeNotes")
+  legislativeItems LegislativeItem[] @relation("LegislationKnowledge")
+  budgetItems      BudgetItem[]      @relation("BudgetKnowledge")
+  hearings         Hearing[]         @relation("HearingKnowledge")
+  policyIdeas      PolicyIdea[]      @relation("PolicyKnowledge")
+}
+
+model BillAction {
+  id                Int              @id @default(autoincrement())
+  actionText        String
+  actionDate        DateTime
+  chamber           Chamber?
+  sourceUrl         String?
+  rawActionData     Json?
+  createdAt         DateTime         @default(now())
+
+  legislativeItem   LegislativeItem  @relation("BillActions", fields: [legislativeItemId], references: [id], onDelete: Cascade)
+  legislativeItemId Int
+
+  @@index([legislativeItemId])
+  @@index([actionDate])
+}
+
+model BudgetStage {
+  id                Int               @id @default(autoincrement())
+  budgetItem        BudgetItem        @relation("BudgetStages", fields: [budgetItemId], references: [id], onDelete: Cascade)
+  budgetItemId      Int
+  stage             BudgetSourceStage
+  amount            Decimal?
+  sourceUrl         String?
+  sourceRetrievedAt DateTime?
+  provenance        String            @default("inferred") // source-imported | manual-confirmed | inferred | unavailable
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([budgetItemId, stage])
+  @@index([budgetItemId])
+}
+
+model ExternalSourceRef {
+  id               Int              @id @default(autoincrement())
+  source           String
+  externalId       String
+  externalUrl      String?
+  lastSyncedAt     DateTime?
+  rawData          Json?
+  legislativeItem  LegislativeItem? @relation(fields: [legislativeItemId], references: [id])
+  legislativeItemId Int?
+
+  @@unique([source, externalId])
+}
+
+model SyncLog {
+  id               Int      @id @default(autoincrement())
+  source           String
+  status           String
+  triggerType       String   @default("manual")
+  recordsProcessed Int      @default(0)
+  recordsCreated   Int      @default(0)
+  recordsUpdated   Int      @default(0)
+  recordsSkipped   Int      @default(0)
+  errors           String?
+  warnings         String?
+  startedAt        DateTime @default(now())
+  completedAt      DateTime?
+
+  @@index([source, startedAt])
+}
+
+model Amendment {
+  id                Int               @id @default(autoincrement())
+  amendmentNumber   String?
+  title             String
+  type              AmendmentType     @default(AMENDMENT)
+  description       String?
+  filedBy           String?
+  stage             BudgetSourceStage?
+  chamber           Chamber?
+  amount            Decimal?
+  status            AmendmentStatus   @default(FILED)
+  statusDate        DateTime?
+  eoRelevanceNotes  String?
+  sourceUrl         String?
+  archived          Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Provenance / ingestion tracking
+  dataSource         DataSource        @default(MANUAL)
+  sourceExternalId   String?
+  lastSyncedAt       DateTime?
+  sourceRetrievedAt  DateTime?
+  rawSourceData      Json?
+  rawSourceStatus    String?
+
+  budgetItem        BudgetItem?       @relation("BudgetAmendments", fields: [budgetItemId], references: [id])
+  budgetItemId      Int?
+  legislativeItem   LegislativeItem?  @relation("LegislationAmendments", fields: [legislativeItemId], references: [id])
+  legislativeItemId Int?
+
+  @@index([budgetItemId])
+  @@index([legislativeItemId])
+  @@index([status])
+  @@index([dataSource])
+  @@index([sourceExternalId])
+}

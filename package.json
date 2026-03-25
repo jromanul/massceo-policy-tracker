@@ -1,0 +1,54 @@
+{
+  "name": "massceo-tracker",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset": "prisma migrate reset",
+    "db:studio": "prisma studio",
+    "sync": "tsx scripts/sync.ts",
+    "backfill:relevance": "tsx scripts/backfill-relevance.ts",
+    "seed:hearings": "tsx scripts/seed-hearings.ts",
+    "seed:budget": "tsx scripts/seed-budget.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@prisma/client": "^6.19.2",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@tanstack/react-table": "^8.21.3",
+    "@types/cheerio": "^0.22.35",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "cheerio": "^1.2.0",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^1.0.1",
+    "next": "^16.2.1",
+    "postcss": "^8.5.8",
+    "prisma": "^6.19.2",
+    "react": "^19.2.4",
+    "react-big-calendar": "^1.19.4",
+    "react-dom": "^19.2.4",
+    "react-hook-form": "^7.72.0",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^6.0.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/react-big-calendar": "^1.16.3",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.1",
+    "tsx": "^4.21.0"
+  }
+}
