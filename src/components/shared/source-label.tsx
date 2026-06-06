@@ -1,5 +1,5 @@
 const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
-  MA_LEGISLATURE: { label: 'MA Legislature', color: 'text-blue-600' },
+  MA_LEGISLATURE: { label: 'MA Legislature', color: 'text-[var(--ma-navy)]' },
   CONGRESS_GOV: { label: 'Congress.gov', color: 'text-indigo-600' },
   CSV_IMPORT: { label: 'CSV Import', color: 'text-green-600' },
   JSON_IMPORT: { label: 'JSON Import', color: 'text-green-600' },

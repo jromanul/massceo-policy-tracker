@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import React from 'react'
 import Link from 'next/link'
 import { getDashboardData as fetchDashboard } from '@/services/dashboard'
 import {
@@ -19,7 +20,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { resolveCommitteeName } from '@/lib/constants'
-import { formatDate, formatCurrency, truncate } from '@/lib/utils'
+import { formatDate, formatCurrency, truncate, getActiveBudgetFiscalYear } from '@/lib/utils'
 import { SourceLabel } from '@/components/shared/source-label'
 
 interface RecentItem {
@@ -45,6 +46,7 @@ interface DashboardData {
     status: string
     jurisdiction: string
     dataSource?: string
+    statusDate: string | null
   }>
   highPriorityFederal: Array<{
     id: number
@@ -52,6 +54,7 @@ interface DashboardData {
     title: string
     status: string
     dataSource?: string
+    statusDate: string | null
   }>
   upcomingHearings: Array<{
     id: number
@@ -76,6 +79,17 @@ interface DashboardData {
       status: string
       sourceStage: string
       significanceToMassCEO: string | null
+      notes: string | null
+    }>
+    activeAmendments?: Array<{
+      id: number
+      amendmentNumber: string | null
+      title: string
+      filedBy: string | null
+      chamber: string | null
+      status: string
+      amount: number | null
+      sourceUrl: string | null
     }>
   }
   sourceBreakdown?: {
@@ -100,6 +114,16 @@ interface DashboardData {
     createdAt: string
     dataSource?: string
   }>
+  budgetProcessSummary?: {
+    fiscalYear: number
+    currentStageLabel: string | null
+    completedCount: number
+    totalCount: number
+    nextStageLabel: string | null
+    nextStageDate: string | null
+    nextStageDateIsEstimate: boolean
+    stages: Array<{ stageKey: string; stageLabel: string; stageStatus: string }>
+  } | null
 }
 
 async function getDashboardData(): Promise<DashboardData | null> {
@@ -128,7 +152,7 @@ function StatCard({
 }) {
   const colorMap: Record<string, string> = {
     slate: 'bg-slate-100 text-slate-600',
-    blue: 'bg-blue-100 text-blue-600',
+    blue: 'bg-blue-100 text-[var(--ma-navy)]',
     green: 'bg-green-100 text-green-600',
     violet: 'bg-violet-100 text-violet-600',
   }
@@ -152,24 +176,50 @@ function StatCard({
   )
 }
 
-function SectionHeader({
-  title,
-  description,
-  icon: Icon,
-}: {
-  title: string
-  description: string
-  icon: React.ElementType
-}) {
+
+function BudgetProcessCompact({ summary }: { summary: NonNullable<DashboardData['budgetProcessSummary']> }) {
+  const progress = summary.totalCount > 0 ? (summary.completedCount / summary.totalCount) * 100 : 0
+
+  function fmtDate(iso: string | null, est: boolean): string {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    const s = d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    })
+    return est ? `Est. ${s}` : s
+  }
+
   return (
-    <div className="flex items-center gap-3 pt-2 border-t border-slate-200">
-      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-500">
-        <Icon size={16} />
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-slate-600">FY{summary.fiscalYear} Budget Process</span>
+        <span className="text-xs text-slate-400">{summary.completedCount} of {summary.totalCount} stages</span>
       </div>
-      <div>
-        <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
-        <p className="text-xs text-slate-500">{description}</p>
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.max(progress, 3)}%` }} />
       </div>
+      {summary.currentStageLabel && (
+        <div className="flex items-center gap-2">
+          <span className="flex h-2 w-2 rounded-full bg-blue-500" />
+          <span className="text-xs font-medium text-slate-700">{summary.currentStageLabel}</span>
+          <StatusBadge status="CURRENT" type="budgetProcess" />
+        </div>
+      )}
+      {summary.nextStageLabel && (
+        <div className="flex items-center gap-2">
+          <span className="flex h-2 w-2 rounded-full bg-slate-300" />
+          <span className="text-xs text-slate-500">Next: {summary.nextStageLabel}</span>
+          {summary.nextStageDate && (
+            <span className="text-xs text-slate-400 italic">{fmtDate(summary.nextStageDate, summary.nextStageDateIsEstimate)}</span>
+          )}
+        </div>
+      )}
+      <Link href="/budget" className="text-xs text-[var(--ma-navy)] hover:underline inline-flex items-center gap-1">
+        View full timeline →
+      </Link>
     </div>
   )
 }
@@ -180,8 +230,11 @@ function RecentUpdatesList({ items, emptyText }: { items: RecentItem[]; emptyTex
   }
   return (
     <ul className="divide-y divide-slate-100">
-      {items.map((item, i) => (
-        <li key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+      {items.map((item) => (
+        <li
+          key={`${item.type}-${item.id}`}
+          className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+        >
           <Clock size={14} className="text-slate-400 flex-shrink-0" />
           <div className="min-w-0 flex-1">
             <Link href={typeHref(item.type, item.id)} className="text-sm font-medium text-slate-800 hover:underline truncate block">
@@ -223,134 +276,140 @@ export default async function DashboardPage() {
   const budgetSubtitle = data?.budgetSnapshot?.allSeed ? 'seed data — pending authoritative source' : undefined
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Welcome to the MassCEO Policy Tracker. Here&apos;s your current legislative and policy overview.
+    <div className="space-y-8">
+      {/* Commonwealth-style page header */}
+      <div className="pb-6 border-b border-[var(--border)]">
+        <p
+          className="mb-2 font-mono text-[11px] uppercase"
+          style={{
+            color: 'var(--ma-navy)',
+            letterSpacing: '0.12em',
+            fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
+          }}
+        >
+          MassCEO · Employee Ownership Advisory Board
+        </p>
+        <h1
+          className="text-[28px] font-semibold tracking-tight leading-tight"
+          style={{ color: 'var(--ma-navy-ink)' }}
+        >
+          MassCEO Policy Tracker Overview
+        </h1>
+        <p
+          className="mt-2 text-[14px] leading-relaxed max-w-3xl"
+          style={{ color: 'var(--foreground-muted)' }}
+        >
+          A live snapshot of Massachusetts and federal employee-ownership
+          legislation, the FY{getActiveBudgetFiscalYear()} state budget process,
+          upcoming legislative hearings, and pending or recently enacted
+          employee-ownership bills in other states.
         </p>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          Section A: External Policy & Legislative Monitoring
-          ═══════════════════════════════════════════════════════════════ */}
       <div className="space-y-6">
-        <SectionHeader
-          title="External Policy & Legislative Monitoring"
-          description="Bills, hearings, and budget items sourced from MA Legislature and Congress.gov."
-          icon={ScrollText}
-        />
-
-        {/* External Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard
-            title="Bills Tracked"
-            value={stats.totalLegislation}
-            subtitle={legSubtitle}
-            icon={ScrollText}
-            href="/legislation"
-            color="blue"
-          />
-          <StatCard
-            title="Upcoming Hearings"
-            value={stats.upcomingHearings}
-            icon={CalendarDays}
-            href="/hearings"
-            color="green"
-          />
-          <StatCard
-            title="Active Budget Items"
-            value={stats.activeBudgetItems}
-            subtitle={budgetSubtitle}
-            icon={DollarSign}
-            href="/budget"
-            color="slate"
-          />
-        </div>
-
         {/* Two-column grid: Bills & Hearings/Budget */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left column */}
+          {/* Left column — Combined Legislation (MA + Federal) */}
           <div className="space-y-6">
-            {/* MA Bills */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>MA Bills</CardTitle>
-                  <Link href="/legislation?jurisdiction=MASSACHUSETTS" className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                  <CardTitle>Legislation</CardTitle>
+                  <Link href="/legislation" className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
                     View all <ArrowRight size={12} />
                   </Link>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                {!data?.highPriorityLegislation?.length ? (
-                  <p className="text-sm text-slate-500 px-6 py-4">No EO-relevant Massachusetts bills found. MA Legislature sync may need to be run, or no bills matched current relevance criteria.</p>
-                ) : (
-                  <table className="min-w-full">
-                    <thead>
-                      <tr className="border-b border-slate-100">
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Bill #</th>
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Title</th>
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Source</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {data.highPriorityLegislation.map((bill) => (
-                        <tr key={bill.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-2.5 text-sm">
-                            <Link href={`/legislation/${bill.id}`} className="font-medium text-slate-800 hover:underline">
-                              {bill.billNumber ?? '—'}
-                            </Link>
-                          </td>
-                          <td className="px-4 py-2.5 text-sm text-slate-700 max-w-[180px]">
-                            <Link href={`/legislation/${bill.id}`} className="hover:underline">
-                              {truncate(bill.title, 45)}
-                            </Link>
-                          </td>
-                          <td className="px-4 py-2.5 text-sm">
-                            <StatusBadge status={bill.status} type="legislative" />
-                          </td>
-                          <td className="px-4 py-2.5 text-sm">
-                            {bill.dataSource && <SourceLabel dataSource={bill.dataSource} />}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </CardContent>
-            </Card>
+                {(() => {
+                  // Chronological sort: most recent action date first (null dates last)
+                  const chronoSort = <T extends { statusDate: string | null }>(a: T, b: T) => {
+                    if (!a.statusDate && !b.statusDate) return 0
+                    if (!a.statusDate) return 1
+                    if (!b.statusDate) return -1
+                    return new Date(b.statusDate).getTime() - new Date(a.statusDate).getTime()
+                  }
+                  const maBills = [...(data?.highPriorityLegislation ?? [])]
+                    .sort(chronoSort)
+                    .map((b) => ({ ...b, jurisdiction: 'MASSACHUSETTS' as const }))
+                  const federalBills = [...(data?.highPriorityFederal ?? [])]
+                    .sort(chronoSort)
+                    .map((b) => ({ ...b, jurisdiction: 'FEDERAL' as const }))
+                  const combined = [...maBills, ...federalBills]
 
-            {/* Federal Items */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Federal Items</CardTitle>
-                  <Link href="/legislation?jurisdiction=FEDERAL" className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
-                    View all <ArrowRight size={12} />
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                {!data?.highPriorityFederal?.length ? (
-                  <p className="text-sm text-slate-500 px-6 py-4">No EO-relevant federal bills found. Run sync to import from Congress.gov.</p>
-                ) : (
-                  <ul className="divide-y divide-slate-100">
-                    {data.highPriorityFederal.map((bill) => (
-                      <li key={bill.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
-                        <div className="min-w-0 flex-1">
-                          <Link href={`/legislation/${bill.id}`} className="text-sm font-medium text-slate-800 hover:underline block truncate">
-                            {bill.billNumber ? `${bill.billNumber} — ` : ''}{truncate(bill.title, 55)}
-                          </Link>
+                  if (combined.length === 0) {
+                    return (
+                      <p className="text-sm text-slate-500 px-6 py-4">
+                        No employee-ownership bills found. Daily sync runs at 2 AM ET; check back after the next refresh.
+                      </p>
+                    )
+                  }
+
+                  return (
+                    <div className="divide-y divide-slate-100">
+                      {maBills.length > 0 && (
+                        <div>
+                          <div className="px-4 py-2 bg-slate-50 text-xs font-semibold uppercase text-slate-500 tracking-wide">
+                            Massachusetts
+                          </div>
+                          <ul className="divide-y divide-slate-100">
+                            {maBills.map((bill) => (
+                              <li
+                                key={bill.id}
+                                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+                              >
+                                <Link
+                                  href={`/legislation/${bill.id}`}
+                                  className="font-mono text-xs font-semibold text-slate-700 hover:underline shrink-0 w-14"
+                                >
+                                  {bill.billNumber ?? '—'}
+                                </Link>
+                                <Link
+                                  href={`/legislation/${bill.id}`}
+                                  className="text-sm text-slate-800 hover:underline flex-1 min-w-0 truncate"
+                                >
+                                  {truncate(bill.title, 55)}
+                                </Link>
+                                {bill.dataSource && <SourceLabel dataSource={bill.dataSource} />}
+                                <StatusBadge status={bill.status} type="legislative" />
+                              </li>
+                            ))}
+                          </ul>
                         </div>
-                        {bill.dataSource && <SourceLabel dataSource={bill.dataSource} />}
-                        <StatusBadge status={bill.status} type="legislative" />
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                      )}
+                      {federalBills.length > 0 && (
+                        <div>
+                          <div className="px-4 py-2 bg-slate-50 text-xs font-semibold uppercase text-slate-500 tracking-wide">
+                            Federal
+                          </div>
+                          <ul className="divide-y divide-slate-100">
+                            {federalBills.map((bill) => (
+                              <li
+                                key={bill.id}
+                                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+                              >
+                                <Link
+                                  href={`/legislation/${bill.id}`}
+                                  className="font-mono text-xs font-semibold text-slate-700 hover:underline shrink-0 w-14"
+                                >
+                                  {bill.billNumber ?? '—'}
+                                </Link>
+                                <Link
+                                  href={`/legislation/${bill.id}`}
+                                  className="text-sm text-slate-800 hover:underline flex-1 min-w-0 truncate"
+                                >
+                                  {truncate(bill.title, 55)}
+                                </Link>
+                                {bill.dataSource && <SourceLabel dataSource={bill.dataSource} />}
+                                <StatusBadge status={bill.status} type="legislative" />
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </CardContent>
             </Card>
           </div>
@@ -369,18 +428,24 @@ export default async function DashboardPage() {
               </CardHeader>
               <CardContent className="p-0">
                 {!data?.upcomingHearings?.length ? (
-                  <p className="text-sm text-slate-500 px-6 py-4">No upcoming hearings. Run sync to import from the MA Legislature events calendar.</p>
+                  <p className="text-sm text-slate-500 px-6 py-4">No upcoming hearings. Daily sync runs at 2 AM ET; check back after the next refresh.</p>
                 ) : (
                   <ul className="divide-y divide-slate-100">
-                    {data.upcomingHearings.slice(0, 5).map((hearing) => (
+                    {[...data.upcomingHearings]
+                      .sort(
+                        (a, b) =>
+                          new Date(a.startDatetime).getTime() - new Date(b.startDatetime).getTime(),
+                      )
+                      .slice(0, 5)
+                      .map((hearing) => (
                       <li key={hearing.id} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
                         <div className="flex-shrink-0 mt-0.5">
-                          <div className="flex flex-col items-center justify-center w-10 h-10 rounded-md bg-blue-50 text-blue-700 text-center">
+                          <div className="flex flex-col items-center justify-center w-10 h-10 rounded-md bg-blue-50 text-[var(--ma-navy)] text-center">
                             <span className="text-xs font-bold leading-none">
-                              {new Date(hearing.startDatetime).toLocaleDateString('en-US', { month: 'short' })}
+                              {new Date(hearing.startDatetime).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}
                             </span>
                             <span className="text-base font-bold leading-none">
-                              {new Date(hearing.startDatetime).getDate()}
+                              {new Date(hearing.startDatetime).toLocaleDateString('en-US', { day: 'numeric', timeZone: 'UTC' })}
                             </span>
                           </div>
                         </div>
@@ -392,7 +457,6 @@ export default async function DashboardPage() {
                             <p className="text-xs text-slate-500 truncate">{resolveCommitteeName(hearing.committee)}</p>
                           )}
                         </div>
-                        {hearing.dataSource && <SourceLabel dataSource={hearing.dataSource} />}
                         <StatusBadge status={hearing.status} type="hearing" />
                       </li>
                     ))}
@@ -414,192 +478,200 @@ export default async function DashboardPage() {
               <CardContent>
                 {data?.budgetSnapshot?.items && data.budgetSnapshot.items.length > 0 ? (
                   <div className="space-y-4">
-                    {data.budgetSnapshot.items
-                      .sort((a, b) => b.fiscalYear - a.fiscalYear)
-                      .map((item) => {
-                        const isCurrent = item.status === 'ADOPTED'
-                        const isZero = item.amountProposed === 0 && !item.amountAdopted
+                    {(() => {
+                      // Chronological order: oldest fiscal year first, then by
+                      // stage within each FY (Governor → House → Senate → Conf
+                      // → Final). This places concluded years at the top and
+                      // the active FY's process at the bottom.
+                      const stageRank: Record<string, number> = {
+                        GOVERNOR: 1,
+                        HOUSE: 2,
+                        SENATE: 3,
+                        CONFERENCE: 4,
+                        FINAL: 5,
+                        SUPPLEMENTAL: 6,
+                      }
+                      const stageLabel: Record<string, string> = {
+                        GOVERNOR: "Governor's Proposal",
+                        HOUSE: 'House',
+                        SENATE: 'Senate Ways & Means',
+                        CONFERENCE: 'Conference Report',
+                        FINAL: 'Final',
+                        SUPPLEMENTAL: 'Supplemental',
+                      }
+                      const sortedItems = [...data.budgetSnapshot.items].sort((a, b) => {
+                        if (a.fiscalYear !== b.fiscalYear) return a.fiscalYear - b.fiscalYear
                         return (
-                          <div key={item.fiscalYear} className={`p-3 rounded-lg border ${isZero ? 'bg-red-50 border-red-200' : isCurrent ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
+                          (stageRank[a.sourceStage] ?? 99) -
+                          (stageRank[b.sourceStage] ?? 99)
+                        )
+                      })
+                      const nextFY = data.budgetSnapshot.nextFY
+                      // Filter out amendments already reflected in a chamber
+                      // row's amount — once an amendment is ADOPTED, the House/
+                      // Senate row carries its dollars and a "via amendment"
+                      // qualifier. Listing the same amendment in a separate
+                      // "Live Amendments" block on top of that is redundant
+                      // (per Board feedback).
+                      const amendments = (
+                        data.budgetSnapshot.activeAmendments ?? []
+                      ).filter((a) => a.status !== 'ADOPTED')
+
+                      // Detect whether the next-FY has multiple stages tracked
+                      // (Governor + House + Senate, etc.). If only one stage,
+                      // the row label can stay "FYxx MassCEO Budget" without
+                      // a stage qualifier.
+                      const nextFYStageCount = sortedItems.filter(
+                        (it) => it.fiscalYear === nextFY,
+                      ).length
+                      // Index of the LAST next-FY row, used to anchor the live
+                      // amendments block at the bottom of the FY27 group.
+                      let lastNextFYIdx = -1
+                      sortedItems.forEach((it, i) => {
+                        if (it.fiscalYear === nextFY) lastNextFYIdx = i
+                      })
+
+                      const rendered: React.ReactNode[] = []
+                      sortedItems.forEach((item, idx) => {
+                        const fyShort = `FY${String(item.fiscalYear).slice(-2)}`
+                        // Show stage qualifier only when this FY has multiple
+                        // stages tracked (e.g. FY27 mid-process). For single-
+                        // stage years like FY26 FINAL, the plain "FYxx MassCEO
+                        // Budget" reads cleanly per Board feedback.
+                        const showStage =
+                          item.fiscalYear === nextFY && nextFYStageCount > 1
+                        const rowHeading = showStage
+                          ? `${fyShort} MassCEO Budget — ${stageLabel[item.sourceStage] ?? item.sourceStage}`
+                          : `${fyShort} MassCEO Budget`
+                        // Chamber-stage labels ("House budget" / "Senate
+                        // budget") frame the amount as a proposal — whether
+                        // the dollars got there via the Ways & Means mark or
+                        // a floor amendment, the engrossed chamber budget is
+                        // still a proposal to the other chamber, not an
+                        // enacted appropriation. Only the FINAL stage uses
+                        // "adopted."
+                        const isChamberStage =
+                          item.sourceStage === 'HOUSE' || item.sourceStage === 'SENATE'
+                        const amountQualifier = isChamberStage
+                          ? item.sourceStage === 'HOUSE'
+                            ? 'proposed in House budget'
+                            : 'proposed in Senate budget'
+                          : item.amountAdopted != null
+                          ? 'adopted'
+                          : item.sourceStage === 'GOVERNOR'
+                          ? "governor's proposal"
+                          : 'proposal'
+                        rendered.push(
+                          <div
+                            key={`fy-${item.fiscalYear}-${item.sourceStage}`}
+                            className="p-3 rounded-lg border bg-slate-50 border-slate-200"
+                          >
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-semibold text-slate-600">FY{item.fiscalYear} — Line 7002-1075</span>
+                              <span className="text-xs font-semibold text-slate-600">
+                                {rowHeading}
+                              </span>
                               <StatusBadge status={item.status} type="budget" />
                             </div>
                             <div className="flex items-baseline gap-2">
-                              <p className={`text-xl font-bold ${isZero ? 'text-red-700' : 'text-slate-900'}`}>
+                              <p className="text-xl font-bold text-slate-900">
                                 {formatCurrency(item.amountAdopted ?? item.amountProposed)}
                               </p>
-                              {item.amountAdopted != null && (
-                                <span className="text-xs text-slate-500">adopted</span>
-                              )}
-                              {item.amountAdopted == null && item.sourceStage && (
-                                <span className="text-xs text-slate-500">{item.sourceStage.toLowerCase()} proposal</span>
-                              )}
+                              <span className="text-xs text-slate-500">{amountQualifier}</span>
                             </div>
-                            {isZero && (
-                              <p className="text-xs text-red-600 mt-1">
-                                Governor&apos;s budget proposes $0. Amendment filing opens after HWM release (est. mid-April).
-                              </p>
-                            )}
-                          </div>
+                          </div>,
                         )
-                      })}
+
+                        // Inject live amendments block ONCE, after the LAST
+                        // next-FY row (so it lands at the bottom of the active
+                        // FY's stage group rather than between stages). Skip
+                        // the block entirely when no non-ADOPTED amendments
+                        // remain after the de-dup filter above.
+                        if (
+                          idx === lastNextFYIdx &&
+                          nextFY &&
+                          amendments.length > 0
+                        ) {
+                          rendered.push(
+                            <div
+                              key="amendments"
+                              className="p-3 rounded-lg border border-blue-200 bg-blue-50"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-semibold text-[var(--ma-navy)] flex items-center gap-1.5">
+                                  <span className="relative flex h-1.5 w-1.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+                                  </span>
+                                  Live Amendments Filed — FY{nextFY}
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  via malegislature.gov
+                                </span>
+                              </div>
+                              <ul className="space-y-2">
+                                {amendments.map((a) => (
+                                  <li key={a.id} className="text-xs">
+                                    <div className="flex items-start gap-2">
+                                      <span className="font-mono font-semibold text-[var(--ma-navy)] shrink-0">
+                                        #{a.amendmentNumber}
+                                      </span>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-slate-800 font-medium leading-snug">
+                                          {a.title}
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-0.5 text-slate-600 flex-wrap">
+                                          {a.chamber && (
+                                            <span className="uppercase text-[10px] font-semibold text-slate-500">
+                                              {a.chamber}
+                                            </span>
+                                          )}
+                                          {a.filedBy && (
+                                            <span>Sponsor: {a.filedBy}</span>
+                                          )}
+                                          {a.amount !== null && (
+                                            <span className="font-semibold text-green-700">
+                                              ${a.amount.toLocaleString()}
+                                            </span>
+                                          )}
+                                          <StatusBadge status={a.status} type="amendment" />
+                                          {a.sourceUrl && (
+                                            <a
+                                              href={a.sourceUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-[var(--ma-navy)] hover:underline"
+                                            >
+                                              View
+                                            </a>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>,
+                          )
+                        }
+                      })
+                      return rendered
+                    })()}
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500">No budget data available.</p>
+                )}
+
+                {/* Compact Budget Process Timeline */}
+                {data?.budgetProcessSummary && data.budgetProcessSummary.totalCount > 0 && (
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    <BudgetProcessCompact summary={data.budgetProcessSummary} />
+                  </div>
                 )}
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Upcoming Hearings & Budget Milestones Timeline */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Upcoming Hearings & Budget Milestones</CardTitle>
-              <Link href="/hearings" className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
-                View all <ArrowRight size={12} />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {!data?.upcomingHearings?.length ? (
-              <p className="text-sm text-slate-500 px-6 py-4">No upcoming hearings or milestones scheduled.</p>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {data.upcomingHearings.map((hearing) => {
-                  const d = new Date(hearing.startDatetime)
-                  return (
-                    <div key={hearing.id} className="flex items-start gap-4 px-4 py-3 hover:bg-slate-50 transition-colors">
-                      <div className="flex-shrink-0">
-                        <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-blue-50 text-blue-700 text-center">
-                          <span className="text-[10px] font-semibold uppercase leading-none">
-                            {d.toLocaleDateString('en-US', { month: 'short' })}
-                          </span>
-                          <span className="text-lg font-bold leading-none mt-0.5">
-                            {d.getDate()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <Link href={`/hearings/${hearing.id}`} className="text-sm font-medium text-slate-800 hover:underline block">
-                          {hearing.title}
-                        </Link>
-                        {hearing.committee && (
-                          <p className="text-xs text-slate-500 mt-0.5">{resolveCommitteeName(hearing.committee)}</p>
-                        )}
-                      </div>
-                      <StatusBadge status={hearing.status} type="hearing" />
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          Section B: Internal Governance & EOAB Workflow
-          ═══════════════════════════════════════════════════════════════ */}
-      <div className="space-y-6">
-        <SectionHeader
-          title="Internal Governance & EOAB Workflow"
-          description="Policy ideas, board attention items, and internal records managed by EOAB staff."
-          icon={Lightbulb}
-        />
-
-        {/* Internal Stats */}
-        <div className="max-w-xs">
-          <StatCard
-            title="Policy Ideas"
-            value={stats.policyIdeas}
-            icon={Lightbulb}
-            href="/policy-ideas"
-            color="violet"
-          />
-        </div>
-
-        {/* Two-column grid: Policy Ideas & Board Attention */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent EOAB Policy Ideas */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Recent EOAB Policy Ideas</CardTitle>
-                <Link href="/policy-ideas" className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
-                  View all <ArrowRight size={12} />
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {!data?.recentPolicyIdeas?.length ? (
-                <p className="text-sm text-slate-500 px-6 py-4">No recent policy ideas.</p>
-              ) : (
-                <ul className="divide-y divide-slate-100">
-                  {data.recentPolicyIdeas.map((idea) => (
-                    <li key={idea.id} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
-                      <div className="min-w-0 flex-1">
-                        <Link href={`/policy-ideas/${idea.id}`} className="text-sm font-medium text-slate-800 hover:underline block truncate">
-                          {truncate(idea.title, 50)}
-                        </Link>
-                        <div className="flex items-center gap-2 mt-1">
-                          {idea.issueArea && <span className="text-xs text-slate-500">{idea.issueArea}</span>}
-                          <StatusBadge status={idea.disposition} type="policy" />
-                        </div>
-                      </div>
-                      {idea.dataSource && <SourceLabel dataSource={idea.dataSource} />}
-                      <span className="text-xs text-slate-400 flex-shrink-0">{formatDate(idea.createdAt)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Board Attention */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <AlertCircle size={16} className="text-orange-500" />
-                <CardTitle>Items Needing Board Attention</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {!data?.boardAttention?.length ? (
-                <p className="text-sm text-slate-500 px-6 py-4">No items require immediate board attention.</p>
-              ) : (
-                <ul className="divide-y divide-slate-100">
-                  {data.boardAttention.map((item, i) => (
-                    <li key={i} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
-                      <div className="min-w-0 flex-1">
-                        <Link href={item.href} className="text-sm font-medium text-slate-800 hover:underline block truncate">
-                          {truncate(item.title, 55)}
-                        </Link>
-                        <p className="text-xs text-orange-600 mt-0.5">{item.reason}</p>
-                      </div>
-                      {item.dataSource && <SourceLabel dataSource={item.dataSource} />}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recently Updated Internal Records */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recently Updated Internal Records</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <RecentUpdatesList
-              items={data?.recentlyUpdatedInternal ?? []}
-              emptyText="No recent internal updates."
-            />
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

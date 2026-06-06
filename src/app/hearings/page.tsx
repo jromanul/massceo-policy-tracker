@@ -129,7 +129,7 @@ function MonthlyCalendar({
 
           return (
             <div
-              key={i}
+              key={`cell-${year}-${month}-${day ?? `pad-${i}`}`}
               className="min-h-[90px] border-b border-r border-slate-100 p-1 last:border-r-0"
             >
               {day !== null && (
@@ -172,7 +172,10 @@ export default function HearingsListPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('table')
 
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('')
+  // Default status filter to UPCOMING so the Hearings & Calendar page surfaces
+  // forward-looking activity rather than a historical log of completed events.
+  // Users can clear the filter to see completed/canceled hearings.
+  const [status, setStatus] = useState('UPCOMING')
   const [jurisdiction, setJurisdiction] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -214,7 +217,9 @@ export default function HearingsListPage() {
     if (key === 'contentClass') setContentClass(value)
   }
 
-  const calendarEvents: CalendarEvent[] = (data?.items ?? []).map((h) => ({
+  const calendarEvents: CalendarEvent[] = [...(data?.items ?? [])]
+    .sort((a, b) => new Date(a.startDatetime).getTime() - new Date(b.startDatetime).getTime())
+    .map((h) => ({
     id: h.id,
     title: h.title,
     start: new Date(h.startDatetime),
@@ -227,14 +232,30 @@ export default function HearingsListPage() {
     {
       accessorKey: 'startDatetime',
       header: 'Date',
-      cell: ({ getValue }) => {
-        const dt = new Date(getValue() as string)
+      cell: ({ row }) => {
+        const dt = new Date(row.original.startDatetime)
+        // Milestone-style entries (budget process markers, committee deadlines)
+        // don't have a real scheduled clock time — they're date-only events.
+        // Show only the date for those; show date + time for actual hearings.
+        const isMilestone =
+          row.original.hearingType === 'Budget Milestone' ||
+          row.original.hearingType === 'Committee Deadline'
         return (
           <div className="whitespace-nowrap">
             <p className="text-sm font-medium text-slate-800">{formatDate(dt)}</p>
-            <p className="text-xs text-slate-500">
-              {dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-            </p>
+            {!isMilestone && (
+              <p className="text-xs text-slate-500">
+                {/* Render the UTC time component (the Eastern wall-clock time the
+                    scraper stored as "...T13:00:00Z") and label it ET; ET
+                    formatting would wrongly show 9:00 AM for a 1:00 PM hearing. */}
+                {dt.toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  timeZone: 'UTC',
+                })}
+                {' '}ET
+              </p>
+            )}
           </div>
         )
       },
@@ -291,13 +312,16 @@ export default function HearingsListPage() {
     },
   ]
 
-  const items = data?.items ?? []
+  // Always sort by date ascending (earliest first) — client-side guarantee
+  const items = [...(data?.items ?? [])].sort(
+    (a, b) => new Date(a.startDatetime).getTime() - new Date(b.startDatetime).getTime(),
+  )
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Hearings &amp; Calendar"
-        description="Track legislative hearings, committee sessions, and key events."
+        description="Upcoming committee hearings, executive sessions, and budget events relevant to MassCEO and employee ownership. All times shown in Eastern Time."
         actions={
           <div className="flex items-center gap-2">
             <div className="flex items-center border border-slate-300 rounded-md overflow-hidden">

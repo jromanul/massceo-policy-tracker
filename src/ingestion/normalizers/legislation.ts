@@ -36,6 +36,11 @@ const MA_STATUS_MAP: Record<string, string> = {
   'new draft substituted': 'IN_COMMITTEE',
   'discharged to the committee': 'IN_COMMITTEE',
   'hearing scheduled': 'IN_COMMITTEE',
+  'reporting date extended': 'IN_COMMITTEE',
+  // Note: in MA legislative procedure, "accompanied a study order" means the
+  // committee has effectively killed the bill — the bill's subject gets sent
+  // to "study" while the bill itself does not move forward. Mapped to DEAD
+  // alongside the explicit form at the top of this object.
   'recommitted': 'IN_COMMITTEE',
   'read second': 'PASSED_ONE_CHAMBER',
   'read third and passed': 'PASSED_ONE_CHAMBER',

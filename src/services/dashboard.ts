@@ -6,6 +6,7 @@ import {
   HearingStatus,
 } from '@prisma/client'
 import { getContentClass } from '@/lib/source-metadata'
+import { getBudgetProcessSummary } from '@/services/budget-process'
 
 export async function getDashboardData() {
   const now = new Date()
@@ -35,7 +36,7 @@ export async function getDashboardData() {
     prisma.budgetItem.count({ where: { archived: false, fiscalYear: { in: [currentFY, currentFY + 1] } } }),
     prisma.policyIdea.count({ where: { archived: false } }),
 
-    // MA bills (top 5, EO-relevant only)
+    // MA bills (top 5, EO-relevant only) — chronological by latest action (most recent first)
     prisma.legislativeItem.findMany({
       where: {
         jurisdiction: Jurisdiction.MASSACHUSETTS,
@@ -43,13 +44,13 @@ export async function getDashboardData() {
         eoRelevanceScore: { gte: 10 },
       },
       take: 5,
-      orderBy: [{ eoRelevanceScore: 'desc' }, { updatedAt: 'desc' }],
+      orderBy: [{ statusDate: 'desc' }, { updatedAt: 'desc' }],
       include: {
         tags: true,
       },
     }),
 
-    // Federal items (top 5, EO-relevant only)
+    // Federal items (top 5, EO-relevant only) — chronological by latest action (most recent first)
     prisma.legislativeItem.findMany({
       where: {
         jurisdiction: Jurisdiction.FEDERAL,
@@ -57,7 +58,7 @@ export async function getDashboardData() {
         eoRelevanceScore: { gte: 10 },
       },
       take: 5,
-      orderBy: [{ eoRelevanceScore: 'desc' }, { updatedAt: 'desc' }],
+      orderBy: [{ statusDate: 'desc' }, { updatedAt: 'desc' }],
       include: {
         tags: true,
       },
@@ -88,6 +89,7 @@ export async function getDashboardData() {
         name: true,
         sourceStage: true,
         significanceToMassCEO: true,
+        notes: true,
       },
     }),
 
@@ -309,6 +311,7 @@ export async function getDashboardData() {
       status: b.status,
       jurisdiction: b.jurisdiction,
       dataSource: b.dataSource,
+      statusDate: b.statusDate?.toISOString() ?? null,
     })),
     highPriorityFederal: federalItems.map((b) => ({
       id: b.id,
@@ -316,6 +319,7 @@ export async function getDashboardData() {
       title: b.title,
       status: b.status,
       dataSource: b.dataSource,
+      statusDate: b.statusDate?.toISOString() ?? null,
     })),
     upcomingHearings: upcomingHearings.map((h) => ({
       id: h.id,
@@ -341,6 +345,30 @@ export async function getDashboardData() {
         status: i.status,
         sourceStage: (i as any).sourceStage as string,
         significanceToMassCEO: (i as any).significanceToMassCEO as string | null,
+        notes: (i as any).notes as string | null,
+      })),
+      activeAmendments: (
+        await prisma.amendment.findMany({
+          where: {
+            archived: false,
+            dataSource: 'MA_LEGISLATURE',
+            sourceExternalId: { contains: `ma-amendment-${currentFY + 1}-` },
+          },
+          orderBy: [{ chamber: 'asc' }, { amendmentNumber: 'asc' }],
+          select: {
+            id: true,
+            amendmentNumber: true,
+            title: true,
+            filedBy: true,
+            chamber: true,
+            status: true,
+            amount: true,
+            sourceUrl: true,
+          },
+        })
+      ).map((a) => ({
+        ...a,
+        amount: a.amount ? Number(a.amount) : null,
       })),
     },
     sourceBreakdown: {
@@ -358,5 +386,6 @@ export async function getDashboardData() {
       createdAt: p.createdAt.toISOString(),
       dataSource: p.dataSource,
     })),
+    budgetProcessSummary: await getBudgetProcessSummary(currentFY + 1),
   }
 }

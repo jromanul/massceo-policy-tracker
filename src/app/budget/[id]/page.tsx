@@ -203,7 +203,7 @@ export default async function BudgetDetailPage({
         title: l.billNumber ? `${l.billNumber} — ${truncate(l.title, 45)}` : truncate(l.title, 55),
         href: `/legislation/${l.id}`,
         badge: l.status,
-        badgeColor: 'bg-blue-100 text-blue-800',
+        badgeColor: 'bg-blue-100 text-[var(--ma-navy)]',
       })),
     },
     {
@@ -214,7 +214,7 @@ export default async function BudgetDetailPage({
         subtitle: formatDate(h.startDatetime),
         href: `/hearings/${h.id}`,
         badge: h.status,
-        badgeColor: 'bg-blue-100 text-blue-800',
+        badgeColor: 'bg-blue-100 text-[var(--ma-navy)]',
       })),
     },
   ]
@@ -341,7 +341,7 @@ export default async function BudgetDetailPage({
                     href={item.sourceUrl ?? `https://budget.digital.mass.gov/summary/fy${item.fiscalYear ?? 27}/budget-line-items/${(item.accountLine as string).replace(/-/g, '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="text-[var(--ma-navy)] hover:underline"
                   >
                     MA Budget Line {item.accountLine}
                   </a>

@@ -94,7 +94,7 @@ async function getIntegrityChecks(): Promise<IntegrityCheck[]> {
     label: 'Budget stages with inferred amounts',
     count: inferredStages,
     description: 'Budget stage amounts not directly sourced — carried forward or estimated.',
-    severity: inferredStages > 0 ? 'info' : 'info',
+    severity: inferredStages > 0 ? 'warning' : 'info',
   })
 
   // Policy ideas with no disposition action
@@ -168,8 +168,8 @@ export default async function DataIntegrityPage() {
         </CardHeader>
         <CardContent>
           <div className="divide-y divide-slate-100">
-            {checks.map((check, i) => (
-              <div key={i} className="flex items-start gap-3 py-3">
+            {checks.map((check) => (
+              <div key={check.label} className="flex items-start gap-3 py-3">
                 <span className={`inline-flex items-center justify-center rounded-full w-8 h-8 text-xs font-bold flex-shrink-0 ${SEVERITY_COLORS[check.severity]}`}>
                   {check.count}
                 </span>

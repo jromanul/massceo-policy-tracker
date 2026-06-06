@@ -114,7 +114,7 @@ export default async function PolicyIdeaDetailPage({
         title: l.billNumber ? `${l.billNumber} — ${truncate(l.title, 45)}` : truncate(l.title, 55),
         href: `/legislation/${l.id}`,
         badge: l.status,
-        badgeColor: 'bg-blue-100 text-blue-800',
+        badgeColor: 'bg-blue-100 text-[var(--ma-navy)]',
       })),
     },
   ]
@@ -304,9 +304,9 @@ export default async function PolicyIdeaDetailPage({
                   <CardContent>
                     <ul className="space-y-1.5">
                       {item.externalLinks.map((link, i) => (
-                        <li key={i}>
+                        <li key={`link-${link}-${i}`}>
                           <a href={link} target="_blank" rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline truncate block">
+                            className="text-sm text-[var(--ma-navy)] hover:underline truncate block">
                             {truncate(link, 45)}
                           </a>
                         </li>

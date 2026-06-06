@@ -196,7 +196,7 @@ export default async function LegislationDetailPage({
         subtitle: formatDate(h.startDatetime),
         href: `/hearings/${h.id}`,
         badge: HEARING_STATUS_DISPLAY[h.status as keyof typeof HEARING_STATUS_DISPLAY] ?? h.status,
-        badgeColor: 'bg-blue-100 text-blue-800',
+        badgeColor: 'bg-blue-100 text-[var(--ma-navy)]',
       })),
     },
     {
@@ -323,7 +323,7 @@ export default async function LegislationDetailPage({
                     href={item.externalLinks[0]}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline truncate"
+                    className="text-[var(--ma-navy)] hover:underline truncate"
                   >
                     {item.externalLinks[0]}
                   </a>
@@ -383,13 +383,15 @@ export default async function LegislationDetailPage({
                       <p className="text-sm text-slate-700">{item.coSponsors.join(', ')}</p>
                     </div>
                   )}
-                  {item.committee && (
+                  {/* Committee — only displayed when the code resolves to a
+                      verified human-readable name from MA_COMMITTEE_CODES
+                      (sourced from malegislature.gov/Committees). Unmapped
+                      codes are suppressed rather than shown as raw text. */}
+                  {item.committee && resolveCommitteeName(item.committee) && (
                     <div>
                       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Committee</p>
                       <p className="text-sm text-slate-700">{resolveCommitteeName(item.committee)}</p>
-                      {resolveCommitteeName(item.committee) !== item.committee && (
-                        <code className="text-xs text-slate-400">{item.committee}</code>
-                      )}
+                      <code className="text-xs text-slate-400">{item.committee}</code>
                     </div>
                   )}
                   {item.issueCategory && (
@@ -426,7 +428,7 @@ export default async function LegislationDetailPage({
                       <div>
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Hearing Dates</p>
                         {item.hearingDates.map((d, i) => (
-                          <p key={i} className="text-sm text-slate-700">{formatDate(d)}</p>
+                          <p key={`hd-${d}-${i}`} className="text-sm text-slate-700">{formatDate(d)}</p>
                         ))}
                       </div>
                     )}
@@ -434,7 +436,7 @@ export default async function LegislationDetailPage({
                       <div>
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Reporting Deadlines</p>
                         {item.reportingDeadlines.map((d, i) => (
-                          <p key={i} className="text-sm text-slate-700">{formatDate(d)}</p>
+                          <p key={`rd-${d}-${i}`} className="text-sm text-slate-700">{formatDate(d)}</p>
                         ))}
                       </div>
                     )}
@@ -471,12 +473,12 @@ export default async function LegislationDetailPage({
                   <CardContent>
                     <ul className="space-y-1.5">
                       {item.externalLinks.map((link, i) => (
-                        <li key={i}>
+                        <li key={`link-${link}-${i}`}>
                           <a
                             href={link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                            className="text-sm text-[var(--ma-navy)] hover:underline flex items-center gap-1"
                           >
                             <ExternalLink size={12} />
                             {truncate(link, 50)}

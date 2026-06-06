@@ -58,7 +58,7 @@ function FieldValue({ children }: { children: React.ReactNode }) {
 
 function OriginBadge({ origin }: { origin: string }) {
   const colors: Record<string, string> = {
-    Imported: 'bg-blue-50 text-blue-700 border border-blue-200',
+    Imported: 'bg-blue-50 text-[var(--ma-navy)] border border-blue-200',
     Seeded: 'bg-amber-50 text-amber-700 border border-amber-200',
     Manual: 'bg-slate-100 text-slate-600',
   }
@@ -121,8 +121,8 @@ export function SourceMetadataCard({
         {/* Source note */}
         {sourceNote && (
           <div className="flex items-start gap-2 p-2.5 bg-blue-50 border border-blue-200 rounded-lg">
-            <Info size={13} className="text-blue-600 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-800">{sourceNote}</p>
+            <Info size={13} className="text-[var(--ma-navy)] flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-[var(--ma-navy)]">{sourceNote}</p>
           </div>
         )}
 
@@ -141,7 +141,7 @@ export function SourceMetadataCard({
                   href={sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1"
+                  className="text-sm text-[var(--ma-navy)] hover:underline inline-flex items-center gap-1"
                 >
                   <ExternalLink size={12} />
                   View source
@@ -248,7 +248,7 @@ export function SourceMetadataCard({
                               href={stage.sourceUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                              className="text-[var(--ma-navy)] hover:underline inline-flex items-center gap-1"
                             >
                               <ExternalLink size={11} />
                               View source

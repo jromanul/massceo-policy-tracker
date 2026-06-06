@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { syncLegislation, syncHearings, syncBudgetFromAdapter, syncAll } from '@/ingestion'
 
+export const maxDuration = 60 // Allow full 60 seconds for sync operations
+
 type AdapterSource = 'ma_legislature' | 'congress_gov' | 'ma_budget'
 
 const ALLOWED_SOURCES: AdapterSource[] = ['ma_legislature', 'congress_gov', 'ma_budget']

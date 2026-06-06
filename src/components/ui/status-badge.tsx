@@ -3,6 +3,8 @@ import {
   LEGISLATIVE_STATUS_DISPLAY,
   BUDGET_STATUS_COLORS,
   BUDGET_STATUS_DISPLAY,
+  BUDGET_PROCESS_STATUS_COLORS,
+  BUDGET_PROCESS_STATUS_DISPLAY,
   HEARING_STATUS_COLORS,
   HEARING_STATUS_DISPLAY,
   POLICY_DISPOSITION_COLORS,
@@ -16,6 +18,7 @@ import {
 type StatusType =
   | 'legislative'
   | 'budget'
+  | 'budgetProcess'
   | 'hearing'
   | 'policy'
   | 'boardDiscussion'
@@ -48,6 +51,14 @@ function resolveColors(
           'bg-slate-100 text-slate-600',
         label:
           BUDGET_STATUS_DISPLAY[status as keyof typeof BUDGET_STATUS_DISPLAY] ?? status,
+      };
+    case 'budgetProcess':
+      return {
+        colorClass:
+          BUDGET_PROCESS_STATUS_COLORS[status as keyof typeof BUDGET_PROCESS_STATUS_COLORS] ??
+          'bg-slate-100 text-slate-600',
+        label:
+          BUDGET_PROCESS_STATUS_DISPLAY[status as keyof typeof BUDGET_PROCESS_STATUS_DISPLAY] ?? status,
       };
     case 'hearing':
       return {
@@ -98,9 +109,11 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   const { colorClass, label } = resolveColors(status, type);
 
+  // Commonwealth style: square-rounded 2 px corners, restrained weight, tight
+  // tracking. Reads as a formal "tag" rather than a chat-app pill.
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colorClass} ${className}`}
+      className={`inline-flex items-center rounded-[2px] px-2 py-[2px] text-[10.5px] font-semibold uppercase tracking-wide ${colorClass} ${className}`}
     >
       {label}
     </span>

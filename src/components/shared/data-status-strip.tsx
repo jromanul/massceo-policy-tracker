@@ -65,7 +65,7 @@ export function DataStatusStrip({ data }: DataStatusStripProps) {
               <span className="text-slate-500 uppercase tracking-wider">Data Status</span>
             </div>
             <span className="text-slate-200">|</span>
-            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-[var(--ma-navy)] border border-blue-200">
               <Database size={11} />
               {contentCounts.external} External
             </span>
@@ -103,7 +103,7 @@ export function DataStatusStrip({ data }: DataStatusStripProps) {
                   {entry.recordCount > 0 ? `${entry.recordCount} records` : 'No records'}
                 </span>
                 {entry.isRunning && (
-                  <span className="text-blue-600 font-medium">Syncing...</span>
+                  <span className="text-[var(--ma-navy)] font-medium">Syncing...</span>
                 )}
                 {!entry.isRunning && entry.lastSyncAt && (
                   <span className="text-slate-400">{formatSyncTime(entry.lastSyncAt)}</span>

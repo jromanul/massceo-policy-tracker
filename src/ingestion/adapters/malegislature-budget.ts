@@ -22,7 +22,14 @@ const TRACKED_LINE_ITEMS = [
   '7002-1508', // Small Business Development Center
 ]
 
-/** Keywords to search budget descriptions for additional relevant items */
+/** Keywords to search budget descriptions for additional relevant items.
+ * NOTE: only the first 3 are sent as queries to the budget API (see
+ * fetchByKeywords). The rest are kept for documentation and post-filtering.
+ *
+ * Intentionally excludes bare "co-op" — too noisy in budget appropriations
+ * (e.g. "Dorchester Food Co-op", credit unions, electric co-ops). The bills,
+ * hearings, and amendments scrapers still match co-op since EO-related bill
+ * text usually narrows the context. */
 const EO_KEYWORDS = [
   'employee ownership',
   'employee-owned',
@@ -31,6 +38,7 @@ const EO_KEYWORDS = [
   'massceo',
   'center for employee ownership',
   'esop',
+  'eot',
 ]
 
 const BUDGET_API_BASE = 'https://budget.digital.mass.gov'

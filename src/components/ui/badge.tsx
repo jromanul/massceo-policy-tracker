@@ -23,7 +23,7 @@ const variantClasses: Record<BadgeVariant, string> = {
   secondary: 'bg-slate-100 text-slate-700',
   outline: 'border border-slate-300 text-slate-700 bg-transparent',
   destructive: 'bg-red-100 text-red-700',
-  'governance-staff': 'bg-blue-100 text-blue-800',
+  'governance-staff': 'bg-blue-100 text-[var(--ma-navy)]',
   'governance-monitoring': 'bg-amber-100 text-amber-800',
   'governance-board-idea': 'bg-violet-100 text-violet-800',
   'governance-board-discussion': 'bg-indigo-100 text-indigo-800',

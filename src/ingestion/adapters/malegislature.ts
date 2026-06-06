@@ -29,6 +29,7 @@ const SEARCH_KEYWORDS_TIER1 = [
   'employee own', 'employee-own', 'worker own', 'worker-own',
   'esop', 'employee stock ownership', 'employee ownership trust',
   'massceo', 'eot',
+  'co-op', // catches "co-op", "co-ops", "co-operative", "co-operatives"
 ]
 
 const SEARCH_KEYWORDS_TIER2 = [
@@ -152,7 +153,11 @@ export class MALegislatureAdapter implements SourceAdapter<MALegislatureRawBill>
             ),
           ])
 
-          const committee = detail.CommitteeRecommendations?.[0]?.Committee?.CommitteeCode || ''
+          // Use the LAST committee recommendation (most recent referral), not the first
+          const committeeRecs = detail.CommitteeRecommendations || []
+          const committee = committeeRecs.length > 0
+            ? committeeRecs[committeeRecs.length - 1]?.Committee?.CommitteeCode || ''
+            : ''
           const lastAction = actions.length > 0 ? actions[actions.length - 1] : null
           const chamber: 'House' | 'Senate' = billNumber.startsWith('S') ? 'Senate' : 'House'
 
@@ -216,69 +221,197 @@ export class MALegislatureAdapter implements SourceAdapter<MALegislatureRawBill>
   }
 }
 
+/**
+ * Only import hearings relevant to employee ownership or MassCEO budget tracking.
+ * Uses word-boundary matching for ambiguous terms (e.g. "labor" should not match
+ * "collaboration", "small business" should not match arbitrary commerce hearings).
+ */
+
+// Exact phrase matches (substring OK — very specific)
+const HEARING_STRICT_KEYWORDS = [
+  'ways and means',
+  'economic development',
+  'employee ownership',
+  'employee-owned',
+  'worker ownership',
+  'worker-owned',
+  'worker cooperative',
+  'massceo',
+  'mass ceo',
+  'esop',
+  'eot',
+  'co-op', // catches "co-op", "co-ops", "co-operative", "co-operatives"
+  'community development',
+]
+
+// Word-boundary matches (must be a whole word, not substring)
+const HEARING_WORD_BOUNDARY_KEYWORDS = [
+  'workforce',
+  'cooperative',
+  'cooperatives',
+]
+
+/**
+ * Hearings explicitly excluded by the user despite matching the EO-relevance
+ * filter (e.g. generic committee hearings without an EO-specific agenda).
+ * Compared against the `eventId` parsed from the calendar listing.
+ */
+const HEARING_EVENT_ID_BLOCKLIST = new Set<string>([
+  '5679', // Joint Committee on Labor and Workforce Development — generic
+          // committee hearing, no EO-specific agenda. User-removed Apr 2026.
+])
+
+function isEORelevantHearing(title: string): boolean {
+  const lower = title.toLowerCase()
+
+  // Strict substring matches on very specific phrases
+  for (const kw of HEARING_STRICT_KEYWORDS) {
+    if (lower.includes(kw)) return true
+  }
+
+  // Word-boundary matches for ambiguous words
+  for (const kw of HEARING_WORD_BOUNDARY_KEYWORDS) {
+    const re = new RegExp(`\\b${kw}\\b`, 'i')
+    if (re.test(title)) return true
+  }
+
+  return false
+}
+
 export class MALegislatureHearingAdapter implements SourceAdapter<MALegislatureRawHearing> {
   readonly sourceName = 'ma_legislature' as const
   readonly displayName = 'MA Legislature Hearings'
 
   async fetch(params: FetchParams): Promise<RawRecord<MALegislatureRawHearing>[]> {
     const results: RawRecord<MALegislatureRawHearing>[] = []
+    const cheerio = await import('cheerio')
 
-    try {
-      const eventsUrl = `${BASE_URL}/Events`
-      const response = await fetch(eventsUrl, {
-        headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
-      })
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ${eventsUrl}: ${response.status}`)
-      }
-
-      // The events page requires HTML scraping as there's no JSON API for hearings
-      const cheerio = await import('cheerio')
-      const html = await response.text()
-      const $ = cheerio.load(html)
-
-      $('.eventListing, .event-item, table.eventsTable tbody tr, .eventRow').each((_i, el) => {
-        const $el = $(el)
-        const titleEl = $el.find('a[href*="/Events/"], h3, .eventTitle').first()
-        const title = titleEl.text().trim()
-        const href = titleEl.attr('href') || $el.find('a').first().attr('href')
-
-        const dateText = $el.find('.eventDate, td:first-child, time').first().text().trim()
-        const timeText = $el.find('.eventTime, td:nth-child(2)').first().text().trim()
-        const location = $el.find('.eventLocation, td:nth-child(3)').first().text().trim()
-        const committee = $el.find('.eventCommittee, td:nth-child(4)').first().text().trim()
-
-        if (title && dateText) {
-          const eventUrl = href
-            ? (href.startsWith('http') ? href : `${BASE_URL}${href}`)
-            : `${BASE_URL}/Events`
-
-          const eventId = href?.match(/\/Events\/(\d+)/)?.[1] || `${dateText}-${title}`.replace(/\W+/g, '-')
-
-          results.push({
-            externalId: `ma-hearing-${eventId}`,
-            source: 'ma_legislature',
-            sourceUrl: eventUrl,
-            fetchedAt: new Date(),
-            data: {
-              eventId,
-              title,
-              committee: committee || '',
-              date: dateText,
-              time: timeText || '',
-              location: location || '',
-              relatedBills: [],
-              url: eventUrl,
-            },
-          })
-        }
-      })
-    } catch (err) {
-      console.error('[MALegislatureHearingAdapter] Fetch failed:', err)
-      throw err
+    // Fetch a 2-month forward window: current month + next month. The MA
+    // Legislature calendar URL pattern is /Events/Hearings/Calendar/MM-01-YYYY.
+    // Without forward visibility, the dashboard only sees hearings in the
+    // current month — which obscures upcoming Senate floor debates, conference
+    // committee sessions, and post-passage hearings during a budget cycle.
+    // Two months keeps the daily cron well within Vercel's 60s function cap
+    // while still surfacing hearings 4–6 weeks out (which is as far ahead as
+    // the MA Legislature typically posts events anyway).
+    const today = new Date()
+    const monthsToFetch: { year: number; month: number }[] = []
+    for (let offset = 0; offset < 2; offset++) {
+      const target = new Date(today.getFullYear(), today.getMonth() + offset, 1)
+      monthsToFetch.push({ year: target.getFullYear(), month: target.getMonth() + 1 })
     }
 
-    return results.slice(0, params.limit ?? 100)
+    for (const { year, month } of monthsToFetch) {
+      const monthStr = `${String(month).padStart(2, '0')}-01-${year}`
+      const eventsUrl = `${BASE_URL}/Events/Hearings/Calendar/${monthStr}`
+      console.log(`[MALegislatureHearingAdapter] Fetching ${eventsUrl}`)
+
+      try {
+        const response = await fetch(eventsUrl, {
+          headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+        })
+        if (!response.ok) {
+          console.warn(
+            `[MALegislatureHearingAdapter] ${monthStr}: HTTP ${response.status} — skipping month`,
+          )
+          continue
+        }
+
+        const html = await response.text()
+        const $ = cheerio.load(html)
+
+        // .calendarRow > .calendarHeader (date) + dl.dateList (events).
+        let currentDate = ''
+
+        $('.calendarRow').each((_i, row) => {
+          const $row = $(row)
+          const dateEl = $row.find('.calendarHeader .date')
+          if (dateEl.length) {
+            // Defensive: when the calendar lists a hearing on multiple days,
+            // .calendarHeader .date can collapse every date into one
+            // concatenated string (e.g. "APR 23APR 27APR 29APR 30") because
+            // cheerio's .text() joins child nodes without separators. Take
+            // only the first MMM DD pair so we always anchor to the first
+            // hearing day.
+            const rawDate = dateEl.text().trim()
+            const firstDateMatch = rawDate.match(/[A-Z]{3,}\s*\d{1,2}/)
+            currentDate = firstDateMatch ? firstDateMatch[0].replace(/\s+/g, ' ') : ''
+          }
+
+          $row.find('dl.dateList .row').each((_j, eventRow) => {
+            const $event = $(eventRow)
+            const timeText = $event.find('dt').first().text().trim().split('\n')[0].trim()
+            const titleEl = $event
+              .find('a[href*="/Events/"][href*="/Detail/"] strong')
+              .first()
+            const title = titleEl.text().trim()
+            const href = titleEl.closest('a').attr('href') || ''
+            const statusMatch = $event.find('small').text().match(/Status:\s*(\w+)/)
+            const status = statusMatch ? statusMatch[1] : ''
+
+            const ddText = $event.find('dd').text()
+            const locationMatch = ddText.replace(title, '').replace(/Status:.*/, '').trim()
+            const location = locationMatch.replace(/\s+/g, ' ').trim()
+
+            if (title && currentDate && isEORelevantHearing(title)) {
+              const eventId =
+                href.match(/\/Detail\/(\d+)/)?.[1] ||
+                `${currentDate}-${title}`.replace(/\W+/g, '-')
+
+              // Skip explicitly blocklisted hearings (user-removed)
+              if (HEARING_EVENT_ID_BLOCKLIST.has(eventId)) {
+                return
+              }
+
+              const eventUrl = href ? `${BASE_URL}${href}` : `${BASE_URL}/Events`
+              // Use the calendar page's year — not today's year — so a hearing
+              // shown on the September calendar correctly resolves to that
+              // September even if we cross a year boundary in the 3-month
+              // window.
+              const parsedDate = `${currentDate} ${year}`
+
+              results.push({
+                externalId: `ma-hearing-${eventId}`,
+                source: 'ma_legislature',
+                sourceUrl: eventUrl,
+                fetchedAt: new Date(),
+                data: {
+                  eventId,
+                  title,
+                  committee: title,
+                  date: parsedDate,
+                  time: timeText,
+                  location: location || '',
+                  relatedBills: [],
+                  url: eventUrl,
+                  status,
+                },
+              })
+            }
+          })
+        })
+      } catch (err) {
+        console.error(
+          `[MALegislatureHearingAdapter] ${monthStr} fetch failed:`,
+          err,
+        )
+        // Keep going — partial month coverage is better than failing the whole sync
+      }
+    }
+
+    // De-dup by externalId — if a multi-day hearing appears on two calendar
+    // pages we only want one record.
+    const seen = new Set<string>()
+    const deduped = results.filter((r) => {
+      if (seen.has(r.externalId)) return false
+      seen.add(r.externalId)
+      return true
+    })
+
+    console.log(
+      `[MALegislatureHearingAdapter] Found ${deduped.length} hearings across ${monthsToFetch.length} months`,
+    )
+    return deduped.slice(0, params.limit ?? 100)
   }
 
   async validateConnection(): Promise<{ ok: boolean; message: string }> {

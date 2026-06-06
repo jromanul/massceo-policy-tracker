@@ -1,6 +1,7 @@
 import type {
   LegislativeStatus,
   BudgetStatus,
+  BudgetProcessStatus,
   HearingStatus,
   PolicyDisposition,
   BoardInterestLevel,
@@ -19,17 +20,29 @@ import type {
 } from '@prisma/client'
 
 // ─── Status Colors ────────────────────────────────────────────────────────────
+//
+// Massachusetts Commonwealth palette — restrained, presentation-ready. All
+// badges use the same semantic pattern: low-saturation tinted background + deep
+// text color, no hard outlines. Five semantic roles: success / info / warn /
+// error / neutral. Reference: src/app/globals.css (--status-*-text / -bg).
+
+const SUCCESS = 'bg-[#e6f4ec] text-[#1f6b44]' // adopted / enacted / completed
+const INFO = 'bg-[#e9f2f9] text-[#1f4e8c]'    // active / proposed / in-progress
+const INFO_STRONG = 'bg-[#dde9f5] text-[#0b3d76]' // advanced-state variant
+const WARN = 'bg-[#fdf4dc] text-[#8a6410]'     // monitoring / under-review
+const ERROR = 'bg-[#fbebe7] text-[#8b2a1f]'    // vetoed / rejected / cancelled
+const NEUTRAL = 'bg-[#eef0f4] text-[#4a5160]'  // filed / dead / archived / quiet
 
 export const LEGISLATIVE_STATUS_COLORS: Record<LegislativeStatus, string> = {
-  FILED: 'bg-gray-100 text-gray-700',
-  IN_COMMITTEE: 'bg-blue-100 text-blue-800',
-  REPORTED_OUT: 'bg-indigo-100 text-indigo-800',
-  PASSED_ONE_CHAMBER: 'bg-violet-100 text-violet-800',
-  PASSED_BOTH_CHAMBERS: 'bg-purple-100 text-purple-800',
-  ENACTED: 'bg-green-100 text-green-800',
-  VETOED: 'bg-red-100 text-red-800',
-  DEAD: 'bg-zinc-200 text-zinc-600',
-  MONITORING: 'bg-yellow-100 text-yellow-800',
+  FILED: NEUTRAL,
+  IN_COMMITTEE: INFO,
+  REPORTED_OUT: INFO_STRONG,
+  PASSED_ONE_CHAMBER: INFO_STRONG,
+  PASSED_BOTH_CHAMBERS: INFO_STRONG,
+  ENACTED: SUCCESS,
+  VETOED: ERROR,
+  DEAD: NEUTRAL,
+  MONITORING: WARN,
 }
 
 export const LEGISLATIVE_STATUS_DISPLAY: Record<LegislativeStatus, string> = {
@@ -45,12 +58,12 @@ export const LEGISLATIVE_STATUS_DISPLAY: Record<LegislativeStatus, string> = {
 }
 
 export const BUDGET_STATUS_COLORS: Record<BudgetStatus, string> = {
-  PROPOSED: 'bg-blue-100 text-blue-800',
-  UNDER_REVIEW: 'bg-yellow-100 text-yellow-800',
-  AMENDED: 'bg-orange-100 text-orange-800',
-  ADOPTED: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
-  MONITORING: 'bg-gray-100 text-gray-700',
+  PROPOSED: INFO,
+  UNDER_REVIEW: WARN,
+  AMENDED: INFO_STRONG,
+  ADOPTED: SUCCESS,
+  REJECTED: ERROR,
+  MONITORING: NEUTRAL,
 }
 
 export const BUDGET_STATUS_DISPLAY: Record<BudgetStatus, string> = {
@@ -63,10 +76,10 @@ export const BUDGET_STATUS_DISPLAY: Record<BudgetStatus, string> = {
 }
 
 export const HEARING_STATUS_COLORS: Record<HearingStatus, string> = {
-  UPCOMING: 'bg-blue-100 text-blue-800',
-  COMPLETED: 'bg-green-100 text-green-800',
-  CANCELED: 'bg-red-100 text-red-800',
-  MONITORING_ONLY: 'bg-gray-100 text-gray-700',
+  UPCOMING: INFO,
+  COMPLETED: SUCCESS,
+  CANCELED: ERROR,
+  MONITORING_ONLY: NEUTRAL,
 }
 
 export const HEARING_STATUS_DISPLAY: Record<HearingStatus, string> = {
@@ -77,14 +90,14 @@ export const HEARING_STATUS_DISPLAY: Record<HearingStatus, string> = {
 }
 
 export const POLICY_DISPOSITION_COLORS: Record<PolicyDisposition, string> = {
-  SUBMITTED: 'bg-blue-100 text-blue-800',
-  UNDER_REVIEW: 'bg-yellow-100 text-yellow-800',
-  NEEDS_RESEARCH: 'bg-orange-100 text-orange-800',
-  REFERRED_FOR_DISCUSSION: 'bg-indigo-100 text-indigo-800',
-  MONITORING: 'bg-gray-100 text-gray-700',
-  DEFERRED: 'bg-zinc-100 text-zinc-700',
-  CLOSED: 'bg-red-100 text-red-800',
-  ARCHIVED: 'bg-zinc-200 text-zinc-600',
+  SUBMITTED: INFO,
+  UNDER_REVIEW: WARN,
+  NEEDS_RESEARCH: WARN,
+  REFERRED_FOR_DISCUSSION: INFO_STRONG,
+  MONITORING: NEUTRAL,
+  DEFERRED: NEUTRAL,
+  CLOSED: ERROR,
+  ARCHIVED: NEUTRAL,
 }
 
 export const POLICY_DISPOSITION_DISPLAY: Record<PolicyDisposition, string> = {
@@ -98,11 +111,25 @@ export const POLICY_DISPOSITION_DISPLAY: Record<PolicyDisposition, string> = {
   ARCHIVED: 'Archived',
 }
 
+export const BUDGET_PROCESS_STATUS_COLORS: Record<BudgetProcessStatus, string> = {
+  COMPLETED: SUCCESS,
+  CURRENT: INFO_STRONG,
+  UPCOMING: NEUTRAL,
+  NOT_YET_AVAILABLE: 'bg-[#f4f6fa] text-[#8a92a0]',
+}
+
+export const BUDGET_PROCESS_STATUS_DISPLAY: Record<BudgetProcessStatus, string> = {
+  COMPLETED: 'Completed',
+  CURRENT: 'Current Stage',
+  UPCOMING: 'Upcoming',
+  NOT_YET_AVAILABLE: 'Not Yet Available',
+}
+
 export const BOARD_INTEREST_COLORS: Record<BoardInterestLevel, string> = {
-  HIGH: 'bg-red-100 text-red-800',
-  MEDIUM: 'bg-yellow-100 text-yellow-800',
-  LOW: 'bg-green-100 text-green-800',
-  NONE: 'bg-gray-100 text-gray-500',
+  HIGH: ERROR,
+  MEDIUM: WARN,
+  LOW: SUCCESS,
+  NONE: NEUTRAL,
 }
 
 export const BOARD_INTEREST_DISPLAY: Record<BoardInterestLevel, string> = {
@@ -116,11 +143,11 @@ export const BOARD_DISCUSSION_STATUS_COLORS: Record<
   BoardDiscussionStatus,
   string
 > = {
-  NOT_DISCUSSED: 'bg-gray-100 text-gray-500',
-  SCHEDULED: 'bg-blue-100 text-blue-800',
-  DISCUSSED: 'bg-green-100 text-green-800',
-  ACTION_REQUIRED: 'bg-orange-100 text-orange-800',
-  RESOLVED: 'bg-emerald-100 text-emerald-800',
+  NOT_DISCUSSED: NEUTRAL,
+  SCHEDULED: INFO,
+  DISCUSSED: SUCCESS,
+  ACTION_REQUIRED: WARN,
+  RESOLVED: SUCCESS,
 }
 
 export const BOARD_DISCUSSION_STATUS_DISPLAY: Record<
@@ -137,11 +164,11 @@ export const BOARD_DISCUSSION_STATUS_DISPLAY: Record<
 // ─── Amendment Status ─────────────────────────────────────────────────────────
 
 export const AMENDMENT_STATUS_COLORS: Record<AmendmentStatus, string> = {
-  FILED: 'bg-gray-100 text-gray-700',
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  ADOPTED: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
-  WITHDRAWN: 'bg-zinc-200 text-zinc-600',
+  FILED: INFO,
+  PENDING: WARN,
+  ADOPTED: SUCCESS,
+  REJECTED: ERROR,
+  WITHDRAWN: NEUTRAL,
 }
 
 export const AMENDMENT_STATUS_DISPLAY: Record<AmendmentStatus, string> = {
@@ -160,10 +187,10 @@ export const AMENDMENT_TYPE_DISPLAY: Record<AmendmentType, string> = {
 // ─── Tracking Tier ───────────────────────────────────────────────────────────
 
 export const TRACKING_TIER_COLORS: Record<TrackingTier, string> = {
-  IMPORTED: 'bg-gray-100 text-gray-700',
-  REVIEWED: 'bg-blue-100 text-blue-800',
-  ACTIVELY_TRACKED: 'bg-green-100 text-green-800',
-  ARCHIVED_NOT_RELEVANT: 'bg-zinc-200 text-zinc-600',
+  IMPORTED: NEUTRAL,
+  REVIEWED: INFO,
+  ACTIVELY_TRACKED: SUCCESS,
+  ARCHIVED_NOT_RELEVANT: NEUTRAL,
 }
 
 export const TRACKING_TIER_DISPLAY: Record<TrackingTier, string> = {
@@ -176,10 +203,10 @@ export const TRACKING_TIER_DISPLAY: Record<TrackingTier, string> = {
 // ─── Hearing Type ────────────────────────────────────────────────────────────
 
 export const HEARING_TYPE_COLORS: Record<HearingType, string> = {
-  LEGISLATIVE: 'bg-blue-100 text-blue-800',
-  BUDGET: 'bg-violet-100 text-violet-800',
-  PUBLIC_COMMENT: 'bg-orange-100 text-orange-800',
-  OTHER: 'bg-gray-100 text-gray-700',
+  LEGISLATIVE: INFO,
+  BUDGET: INFO_STRONG,
+  PUBLIC_COMMENT: WARN,
+  OTHER: NEUTRAL,
 }
 
 export const HEARING_TYPE_DISPLAY: Record<HearingType, string> = {
@@ -215,11 +242,11 @@ export const KNOWLEDGE_ENTRY_TYPE_DISPLAY: Record<KnowledgeEntryType, string> = 
 // ─── Priority Colors ──────────────────────────────────────────────────────────
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
-  CRITICAL: 'bg-red-100 text-red-900',
-  HIGH: 'bg-orange-100 text-orange-800',
-  MEDIUM: 'bg-yellow-100 text-yellow-800',
-  LOW: 'bg-green-100 text-green-800',
-  INFORMATIONAL: 'bg-gray-100 text-gray-600',
+  CRITICAL: ERROR,
+  HIGH: WARN,
+  MEDIUM: WARN,
+  LOW: SUCCESS,
+  INFORMATIONAL: NEUTRAL,
 }
 
 export const PRIORITY_DISPLAY: Record<Priority, string> = {
@@ -233,12 +260,12 @@ export const PRIORITY_DISPLAY: Record<Priority, string> = {
 // ─── Governance Label Colors & Display ───────────────────────────────────────
 
 export const GOVERNANCE_LABEL_COLORS: Record<GovernanceLabel, string> = {
-  STAFF_ANALYSIS: 'bg-blue-100 text-blue-800',
-  MONITORING_NOTE: 'bg-gray-100 text-gray-700',
-  BOARD_IDEA: 'bg-violet-100 text-violet-800',
-  BOARD_DISCUSSION: 'bg-indigo-100 text-indigo-800',
-  FORMAL_RECOMMENDATION: 'bg-emerald-100 text-emerald-800',
-  ARCHIVED: 'bg-zinc-200 text-zinc-600',
+  STAFF_ANALYSIS: INFO,
+  MONITORING_NOTE: NEUTRAL,
+  BOARD_IDEA: INFO_STRONG,
+  BOARD_DISCUSSION: INFO_STRONG,
+  FORMAL_RECOMMENDATION: SUCCESS,
+  ARCHIVED: NEUTRAL,
 }
 
 export const GOVERNANCE_LABEL_DISPLAY: Record<GovernanceLabel, string> = {
@@ -390,43 +417,111 @@ export const KNOWLEDGE_ENTRY_TYPE_OPTIONS: {
 }))
 
 // ─── MA Committee Codes ──────────────────────────────────────────────────────
+//
+// Source of truth: https://malegislature.gov/Committees (scraped 2026-05-15).
+// Covers all 56 committees of the 194th Massachusetts General Court — joint,
+// House-only, Senate-only, special joint, and active subcommittees.
+//
+// IMPORTANT: committee codes are reassigned at the start of each new General
+// Court session. When the 195th session convenes in January 2027, this map
+// must be re-scraped from malegislature.gov/Committees and replaced wholesale.
+// Stale mappings cause bills to display under the wrong committee name.
 
 export const MA_COMMITTEE_CODES: Record<string, string> = {
-  J11: 'Joint Committee on Children, Families and Persons with Disabilities',
-  J12: 'Joint Committee on Consumer Protection and Professional Licensure',
-  J15: 'Joint Committee on Community Development and Small Businesses',
-  J16: 'Joint Committee on Economic Development and Emerging Technologies',
-  J18: 'Joint Committee on Labor and Workforce Development',
-  J19: 'Joint Committee on Financial Services',
-  J20: 'Joint Committee on Housing',
-  J22: 'Joint Committee on Public Service',
-  J24: 'Joint Committee on Revenue',
+  // House-only committees
+  H33: 'House Committee on Rules',
+  H34: 'House Committee on Ways and Means',
+  H36: 'House Committee on Bills in the Third Reading',
+  H38: 'House Committee on Ethics',
+  H45: 'House Committee on Human Resources and Employee Engagement',
+  H46: 'House Committee on Post Audit and Oversight',
+  H51: 'House Committee on Climate Action and Sustainability',
+  H52: 'House Committee on Steering, Policy and Scheduling',
+  H53: 'House Committee on Operations, Facilities and Security',
+  H54: 'House Committee on Federal Funding, Policy and Accountability',
+
+  // Joint committees
+  J10: 'Joint Committee on Municipalities and Regional Government',
+  J11: 'Joint Committee on Financial Services',
+  J12: 'Joint Committee on Economic Development and Emerging Technologies',
+  J13: 'Joint Committee on Children, Families and Persons with Disabilities',
+  J14: 'Joint Committee on Education',
+  J15: 'Joint Committee on Election Laws',
+  J16: 'Joint Committee on Public Health',
+  J17: 'Joint Committee on Consumer Protection and Professional Licensure',
+  J18: 'Joint Committee on Mental Health, Substance Use and Recovery',
+  J19: 'Joint Committee on the Judiciary',
+  J21: 'Joint Committee on Environment and Natural Resources',
+  J22: 'Joint Committee on Public Safety and Homeland Security',
+  J23: 'Joint Committee on Public Service',
+  J24: 'Joint Committee on Health Care Financing',
   J25: 'Joint Committee on State Administration and Regulatory Oversight',
-  J26: 'Joint Committee on the Judiciary',
-  J29: 'Joint Committee on Ways and Means',
-  H31: 'House Committee on Ways and Means',
-  H32: 'House Committee on Rules',
-  S17: 'Senate Committee on Ways and Means',
-  S18: 'Senate Committee on Rules',
+  J26: 'Joint Committee on Revenue',
+  J27: 'Joint Committee on Transportation',
+  J28: 'Joint Committee on Housing',
+  J29: 'Joint Committee on Higher Education',
+  J30: 'Joint Committee on Tourism, Arts and Cultural Development',
+  J31: 'Joint Committee on Veterans and Federal Affairs',
+  J32: 'Joint Committee on Bonding, Capital Expenditures and State Assets',
+  J33: 'Joint Committee on Advanced Information Technology, the Internet and Cybersecurity',
+  J34: 'Joint Committee on Racial Equity, Civil Rights, and Inclusion',
+  J37: 'Joint Committee on Telecommunications, Utilities and Energy',
+  J39: 'Joint Committee on Ways and Means',
+  J40: 'Joint Committee on Rules',
+  J43: 'Joint Committee on Labor and Workforce Development',
+  J45: 'Joint Committee on Agriculture and Fisheries',
+  J46: 'Joint Committee on Aging and Independence',
+  J47: 'Joint Committee on Community Development and Small Businesses',
+  J50: 'Joint Committee on Cannabis Policy',
+  J52: 'Joint Committee on Emergency Preparedness and Management',
+
+  // Senate-only committees
+  S29: 'Senate Committee on Rules',
+  S30: 'Senate Committee on Ways and Means',
+  S31: 'Senate Committee on Bills in the Third Reading',
+  S48: 'Senate Committee on Post Audit and Oversight',
+  S50: 'Senate Committee on Steering and Policy',
+  S51: 'Senate Committee on Climate Change and Global Warming',
+  S53: 'Senate Committee on Personnel and Administration',
+  S55: 'Senate Committee on Intergovernmental Affairs',
+  S56: 'Senate Committee on Ethics',
+  S65: 'Senate Committee on the Census',
+  S66: 'Senate Committee on Juvenile and Emerging Adult Justice',
+
+  // Special joint + subcommittee
+  SJ42: 'Special Joint Committee on Initiative Petitions',
+  TS10: 'Subcommittee on Chapter 250 of the Acts of 2024',
 }
 
 /**
- * Resolve a committee code to a human-readable name.
- * Falls through to the raw code if no mapping exists.
+ * Resolve a committee code to its verified human-readable name.
+ *
+ * Returns the mapped name if the code is in MA_COMMITTEE_CODES (verified
+ * against malegislature.gov). Returns null otherwise — callers should hide
+ * committee display rather than show an unverified raw code to users.
+ *
+ * For hearing data where the value is already a full committee title rather
+ * than a short code, the function falls back to returning the title as-is
+ * (titles come directly from malegislature.gov hearing pages).
  */
 export function resolveCommitteeName(code: string | null | undefined): string | null {
   if (!code) return null
-  return MA_COMMITTEE_CODES[code] ?? code
+  if (MA_COMMITTEE_CODES[code]) return MA_COMMITTEE_CODES[code]
+  // Heuristic: short codes (≤6 chars, alphanumeric) that aren't in the map are
+  // unverified. Don't display them. Anything longer is treated as a pre-resolved
+  // committee title from hearing data and returned as-is.
+  if (/^[A-Z]{1,3}[0-9]{1,3}$/.test(code)) return null
+  return code
 }
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
 export const NAV_ITEMS: { label: string; href: string; icon: string }[] = [
   { label: 'Dashboard', href: '/', icon: 'LayoutDashboard' },
-  { label: 'Legislation', href: '/legislation', icon: 'ScrollText' },
+  { label: 'MA Legislation', href: '/legislation', icon: 'ScrollText' },
   { label: 'Budget', href: '/budget', icon: 'DollarSign' },
   { label: 'Hearings & Calendar', href: '/hearings', icon: 'CalendarDays' },
-  { label: 'EOAB Policy Ideas', href: '/policy-ideas', icon: 'Lightbulb' },
-  { label: 'Knowledge / Archive', href: '/knowledge', icon: 'BookOpen' },
+  { label: 'National Employee Ownership Legislation Tracker', href: '/other-state-centers', icon: 'Map' },
+  { label: 'Peer State Policy Overview', href: '/policy-ideas', icon: 'Lightbulb' },
   { label: 'Admin', href: '/admin', icon: 'Settings' },
 ]

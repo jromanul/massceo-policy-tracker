@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ColumnDef } from '@tanstack/react-table'
 import { PageHeader } from '@/components/layout/page-header'
-import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
 import { SearchInput } from '@/components/ui/search-input'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -20,7 +19,7 @@ import {
   resolveCommitteeName,
 } from '@/lib/constants'
 import { formatDate, truncate } from '@/lib/utils'
-import { ExternalLink, Plus, ScrollText } from 'lucide-react'
+import { ExternalLink, ScrollText } from 'lucide-react'
 
 const SOURCE_LABELS: Record<string, { label: string; short: string }> = {
   MA_LEGISLATURE: { label: 'MA Legislature', short: 'malegislature.gov' },
@@ -172,13 +171,6 @@ function LegislationListContent() {
       ),
     },
     {
-      accessorKey: 'committee',
-      header: 'Committee',
-      cell: ({ getValue }) => (
-        <span className="text-sm text-slate-600">{truncate(resolveCommitteeName(getValue() as string) ?? '', 40) || '—'}</span>
-      ),
-    },
-    {
       accessorKey: 'dataSource',
       header: 'Source',
       cell: ({ row }) => {
@@ -192,7 +184,7 @@ function LegislationListContent() {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"
+              className="text-xs text-[var(--ma-navy)] hover:underline inline-flex items-center gap-1"
             >
               <ExternalLink size={11} />
               {info.short}
@@ -218,16 +210,8 @@ function LegislationListContent() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Legislation"
-        description="Track MA and federal legislation relevant to MassCEO."
-        actions={
-          <Link href="/legislation/new">
-            <Button size="sm">
-              <Plus size={16} />
-              Add Bill
-            </Button>
-          </Link>
-        }
+        title="MA Legislation"
+        description="Massachusetts and federal bills relevant to employee ownership — synced daily from malegislature.gov and Congress.gov."
       />
 
       <div className="space-y-3">
@@ -252,7 +236,7 @@ function LegislationListContent() {
           onClear={handleClearFilters}
         />
         <FilterToggle
-          label="Include enacted / archived"
+          label="Show enacted and archived bills"
           checked={archived}
           onChange={(val) => { setArchived(val); setPage(1) }}
         />
@@ -263,13 +247,8 @@ function LegislationListContent() {
       ) : items.length === 0 ? (
         <EmptyState
           title="No legislation found"
-          description="Try adjusting your filters or search terms, or add a new bill."
+          description="Try adjusting your filters or search terms."
           icon={<ScrollText size={48} />}
-          action={
-            <Link href="/legislation/new">
-              <Button size="sm" variant="outline">Add Bill</Button>
-            </Link>
-          }
         />
       ) : (
         <>

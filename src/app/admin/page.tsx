@@ -16,7 +16,7 @@ export default function AdminPage() {
           <Card className="hover:border-slate-300 transition-colors cursor-pointer">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-[var(--ma-navy)]">
                   <Activity size={18} />
                 </div>
                 <CardTitle>Sync Status</CardTitle>

@@ -119,7 +119,7 @@ export default async function HearingDetailPage({
         title: l.billNumber ? `${l.billNumber} — ${truncate(l.title, 45)}` : truncate(l.title, 55),
         href: `/legislation/${l.id}`,
         badge: l.status,
-        badgeColor: 'bg-blue-100 text-blue-800',
+        badgeColor: 'bg-blue-100 text-[var(--ma-navy)]',
       })),
     },
     {
@@ -146,7 +146,7 @@ export default async function HearingDetailPage({
 
       <PageHeader
         title={item.title}
-        description={`${item.hearingType} · ${start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`}
+        description={`${item.hearingType} · ${start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}`}
         actions={
           <Link href={`/hearings/${item.id}/edit`}>
             <Button variant="outline" size="sm">
@@ -201,12 +201,40 @@ export default async function HearingDetailPage({
                     <Clock size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
                     <div>
                       <p className="text-sm font-medium text-slate-800">
-                        {start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                        {start.toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                          timeZone: 'UTC',
+                        })}
                       </p>
-                      <p className="text-sm text-slate-600">
-                        {start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                        {end && ` – ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}
-                      </p>
+                      {/* Milestone-style entries (budget markers, committee
+                          deadlines) don't have a real scheduled clock time —
+                          they're date-only events. Show time only for actual
+                          hearings. */}
+                      {item.hearingType !== 'Budget Milestone' &&
+                        item.hearingType !== 'Committee Deadline' && (
+                          <p className="text-sm text-slate-600">
+                            {/* Hearing clock times are Eastern wall-clock times
+                                that the scraper stores as the UTC time component
+                                (1:00 PM ET -> "13:00:00Z"). Render that component
+                                in UTC to recover the real wall-clock time, then
+                                label it ET. Formatting in America/New_York would
+                                subtract the offset and show 9:00 AM. */}
+                            {start.toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              timeZone: 'UTC',
+                            })}
+                            {end && ` – ${end.toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              timeZone: 'UTC',
+                            })}`}
+                            {' '}ET
+                          </p>
+                        )}
                     </div>
                   </div>
                   {item.location && (

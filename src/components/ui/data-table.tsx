@@ -73,9 +73,14 @@ export function DataTable<TData>({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
+      <div className="overflow-x-auto rounded-[4px] border border-[var(--border)] bg-[var(--surface)]">
+        <table className="min-w-full">
+          <thead
+            style={{
+              backgroundColor: 'var(--muted)',
+              borderBottom: '2px solid var(--ma-navy)',
+            }}
+          >
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -85,9 +90,10 @@ export function DataTable<TData>({
                     <th
                       key={header.id}
                       scope="col"
-                      className={`px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider select-none ${
-                        canSort ? 'cursor-pointer hover:text-slate-900' : ''
+                      className={`px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] select-none ${
+                        canSort ? 'cursor-pointer hover:text-[var(--ma-navy)]' : ''
                       }`}
+                      style={{ color: 'var(--ma-navy)' }}
                       onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                     >
                       <span className="inline-flex items-center gap-1">
@@ -95,7 +101,7 @@ export function DataTable<TData>({
                           ? null
                           : flexRender(header.column.columnDef.header, header.getContext())}
                         {canSort && (
-                          <span className="text-slate-400">
+                          <span style={{ color: 'var(--ma-navy)' }}>
                             {sortDir === 'asc' ? (
                               <ChevronUp size={14} />
                             ) : sortDir === 'desc' ? (
@@ -112,26 +118,33 @@ export function DataTable<TData>({
               </tr>
             ))}
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody>
             {table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-4 py-12 text-center text-sm text-slate-500"
+                  className="px-4 py-12 text-center text-sm"
+                  style={{ color: 'var(--foreground-subtle)' }}
                 >
                   No records found.
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.map((row, idx) => (
                 <tr
                   key={row.id}
-                  className="hover:bg-slate-50 transition-colors"
+                  className="transition-colors border-t border-[var(--border)] hover:bg-[var(--muted)]"
+                  style={
+                    idx % 2 === 1
+                      ? { backgroundColor: 'var(--surface-alt)' }
+                      : undefined
+                  }
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
-                      className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap"
+                      className="px-4 py-3 text-[13.5px] whitespace-nowrap"
+                      style={{ color: 'var(--foreground)' }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
@@ -154,7 +167,7 @@ export function DataTable<TData>({
               type="button"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="px-3 py-1.5 text-sm rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 text-sm rounded-[3px] border border-[var(--border-strong)] text-[var(--ma-navy-ink)] hover:bg-[var(--muted)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Previous
             </button>
@@ -165,10 +178,10 @@ export function DataTable<TData>({
                   key={page}
                   type="button"
                   onClick={() => table.setPageIndex(page)}
-                  className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded-[3px] border transition-colors ${
                     pageIndex === page
-                      ? 'bg-slate-800 text-white border-slate-800'
-                      : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                      ? 'bg-[var(--ma-navy)] text-white border-[var(--ma-navy)]'
+                      : 'border-[var(--border-strong)] text-[var(--ma-navy-ink)] hover:bg-[var(--muted)]'
                   }`}
                 >
                   {page + 1}
@@ -179,7 +192,7 @@ export function DataTable<TData>({
               type="button"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="px-3 py-1.5 text-sm rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 text-sm rounded-[3px] border border-[var(--border-strong)] text-[var(--ma-navy-ink)] hover:bg-[var(--muted)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Next
             </button>

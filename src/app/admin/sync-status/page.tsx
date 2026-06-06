@@ -100,7 +100,7 @@ export default async function SyncStatusPage() {
                   <td className="px-4 py-3 text-sm text-slate-600 capitalize">
                     {source.lastSyncStatus ?? '—'}
                     {source.isRunning && (
-                      <span className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">
+                      <span className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-[var(--ma-navy)]">
                         Running
                       </span>
                     )}
@@ -142,7 +142,7 @@ export default async function SyncStatusPage() {
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                         log.status === 'success' ? 'bg-green-100 text-green-700' :
                         log.status === 'failed' ? 'bg-red-100 text-red-700' :
-                        log.status === 'running' ? 'bg-blue-100 text-blue-700' :
+                        log.status === 'running' ? 'bg-blue-100 text-[var(--ma-navy)]' :
                         'bg-slate-100 text-slate-600'
                       }`}>
                         {log.status}
@@ -176,7 +176,7 @@ export default async function SyncStatusPage() {
 function SummaryCard({ label, value, color }: { label: string; value: number; color: string }) {
   const bg: Record<string, string> = {
     green: 'bg-green-50 text-green-700',
-    blue: 'bg-blue-50 text-blue-700',
+    blue: 'bg-blue-50 text-[var(--ma-navy)]',
     amber: 'bg-amber-50 text-amber-700',
     slate: 'bg-slate-50 text-slate-700',
   }

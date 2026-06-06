@@ -15,17 +15,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   onClick?: () => void;
 }
 
+// Commonwealth-style buttons: navy primary, restrained neutrals for the rest.
+// Rounded 4 px (not pill), 1 px ring on focus for institutional precision.
 const variantClasses: Record<ButtonVariant, string> = {
   default:
-    'bg-slate-800 text-white hover:bg-slate-700 focus:ring-slate-500',
+    'bg-[var(--ma-navy)] text-white hover:bg-[var(--ma-navy-deep)] focus:ring-[var(--ma-blue)]',
   secondary:
-    'bg-slate-100 text-slate-800 hover:bg-slate-200 focus:ring-slate-400',
+    'bg-[var(--muted)] text-[var(--ma-navy-ink)] hover:bg-[#e9ecf3] focus:ring-[var(--ma-blue)]',
   outline:
-    'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-400',
+    'border border-[var(--border-strong)] bg-white text-[var(--ma-navy-ink)] hover:bg-[var(--muted)] focus:ring-[var(--ma-blue)]',
   ghost:
-    'bg-transparent text-slate-700 hover:bg-slate-100 focus:ring-slate-400',
+    'bg-transparent text-[var(--ma-navy-ink)] hover:bg-[var(--muted)] focus:ring-[var(--ma-blue)]',
   destructive:
-    'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+    'bg-[#8b2a1f] text-white hover:bg-[#751f14] focus:ring-[#a6493e]',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -46,7 +48,7 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const base =
-    'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex items-center justify-center gap-2 rounded-[3px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
   const classes = `${base} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`;
 

@@ -1,25 +1,141 @@
+/* ─── Fonts ─────────────────────────────────────────────────────────────────
+ * Source Sans 3 — primary institutional sans used by mass.gov and aligned
+ *   with the official Commonwealth slide template's typography. Strong clarity
+ *   at small sizes, readable at presentation distance.
+ * Fraunces — display serif used by the Other State Centers tab for policy
+ *   comparison typography.
+ * JetBrains Mono — bill numbers, line-item codes, timestamps, citations.
+ *
+ * Must precede `@import "tailwindcss"`: Tailwind v4 expands its import inline,
+ * so any @import placed after it lands mid-stylesheet and violates the CSS
+ * rule that @import statements come first.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @import "tailwindcss";
 
+/* ─── Design Tokens ─────────────────────────────────────────────────────────
+ * Massachusetts Commonwealth palette, aligned with the MassCEO / Office of
+ * Business Development slide template (deep Commonwealth navy, state-seal
+ * gold-adjacent amber used sparingly, calibrated blues and a single accent
+ * green). Token naming follows role-over-value: every hex only appears here.
+ */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --primary: #1e3a5f;
+  /* Brand — primary navy anchors */
+  --ma-navy: #00235A;            /* header, active states, headings */
+  --ma-navy-deep: #012152;       /* hover states, emphasis */
+  --ma-navy-ink: #0b2e5c;        /* body headlines */
+
+  /* Brand — supporting blues */
+  --ma-blue: #62A8DA;            /* medium blue: links, active accents */
+  --ma-blue-soft: #A0CCE2;       /* light cyan: secondary accents, info tags */
+  --ma-blue-tint: #e9f2f9;       /* subtle backgrounds */
+
+  /* Brand — accent */
+  --ma-green: #33A46A;           /* success, adopted, positive status */
+  --ma-green-tint: #e6f4ec;      /* success backgrounds */
+
+  /* Status palette — muted, professional */
+  --status-success-text: #1f6b44;
+  --status-success-bg:   #e6f4ec;
+  --status-info-text:    #1f4e8c;
+  --status-info-bg:      #e9f2f9;
+  --status-warn-text:    #8a6410;
+  --status-warn-bg:      #fdf4dc;
+  --status-error-text:   #8b2a1f;
+  --status-error-bg:     #fbebe7;
+  --status-neutral-text: #4a5160;
+  --status-neutral-bg:   #eef0f4;
+
+  /* Surfaces */
+  --background: #f4f6fa;        /* page canvas — soft cool gray */
+  --surface: #ffffff;            /* card surfaces */
+  --surface-alt: #fafbfd;        /* striped / alternating rows */
+
+  /* Text */
+  --foreground: #0f1d33;         /* primary text */
+  --foreground-muted: #4a5568;   /* secondary text */
+  --foreground-subtle: #6b7285;  /* tertiary text, meta */
+
+  /* Borders & dividers */
+  --border: #d8dde6;             /* hairline */
+  --border-strong: #b9c1cf;      /* visible divider */
+  --border-navy: #00235A;        /* accent border */
+
+  /* Tailwind-compat tokens */
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --primary: var(--ma-navy);
   --primary-foreground: #ffffff;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --border: #e2e8f0;
-  --ring: #1e3a5f;
-  --accent: #2563eb;
+  --muted: var(--background);
+  --muted-foreground: var(--foreground-muted);
+  --ring: var(--ma-blue);
+  --accent: var(--ma-blue);
 }
 
+/* ─── Base ──────────────────────────────────────────────────────────────── */
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Strong institutional typography hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--ma-navy-ink);
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+h1 { font-weight: 700; letter-spacing: -0.02em; }
+
+/* Body-scoped link defaults. Scoped to <main> so header/footer/chrome links
+   can opt into white-on-navy without fighting this rule in the cascade. */
+main a {
+  color: var(--ma-navy);
+  text-decoration-color: rgba(0, 35, 90, 0.3);
+  text-underline-offset: 2px;
+}
+
+main a:hover {
+  color: var(--ma-navy-deep);
+  text-decoration-color: var(--ma-navy-deep);
 }
 
 /* Clean table styles */
 table { border-collapse: collapse; }
-th { text-align: left; font-weight: 600; }
+th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ma-navy);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Utility: Commonwealth accent strip — three-band motif echoing the
+   Commonwealth seal / state flag banner used on the PPT template cover. */
+.ma-accent-strip {
+  height: 3px;
+  background-image: linear-gradient(
+    to right,
+    var(--ma-green) 0%,
+    var(--ma-green) 33.3%,
+    var(--ma-blue) 33.3%,
+    var(--ma-blue) 66.6%,
+    var(--ma-navy) 66.6%,
+    var(--ma-navy) 100%
+  );
+}
+
+/* Focus ring — accessibility */
+*:focus-visible {
+  outline: 2px solid var(--ma-blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}

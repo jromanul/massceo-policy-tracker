@@ -5,7 +5,7 @@ import { ExternalLink, Database, Upload, FileText, PenLine } from 'lucide-react'
 const DATA_SOURCE_CONFIG: Record<string, { label: string; color: string; icon: typeof Database }> = {
   MANUAL: { label: 'Manual Entry', color: 'bg-slate-100 text-slate-700', icon: PenLine },
   SEED: { label: 'Sample Data', color: 'bg-amber-50 text-amber-700 border border-amber-200', icon: Database },
-  MA_LEGISLATURE: { label: 'MA Legislature', color: 'bg-blue-50 text-blue-700 border border-blue-200', icon: Database },
+  MA_LEGISLATURE: { label: 'MA Legislature', color: 'bg-blue-50 text-[var(--ma-navy)] border border-blue-200', icon: Database },
   CONGRESS_GOV: { label: 'Congress.gov', color: 'bg-indigo-50 text-indigo-700 border border-indigo-200', icon: Database },
   CSV_IMPORT: { label: 'CSV Import', color: 'bg-green-50 text-green-700 border border-green-200', icon: Upload },
   JSON_IMPORT: { label: 'JSON Import', color: 'bg-green-50 text-green-700 border border-green-200', icon: FileText },
@@ -91,7 +91,7 @@ export function ProvenanceDetail({
             href={sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:underline inline-flex items-center gap-1"
+            className="text-[var(--ma-navy)] hover:underline inline-flex items-center gap-1"
           >
             <ExternalLink size={11} />
             View on source website
