@@ -1372,6 +1372,40 @@ export async function syncBudgetBills(
       }
     }
 
+    // ── Reconcile post-passage stages from the engrossed budget bill ──
+    // H5500 (tracked above) only carries House-side actions, so the timeline
+    // stalls at "Senate Budget" even after the Senate passes its version and a
+    // conference committee is appointed. Those post-passage actions — Senate
+    // engrossment, conference appointment, the conference report, enactment and
+    // the Governor's signature — all land on the engrossed budget bill (H5501
+    // for FY27), which both chambers' budgets converge into. Read it and
+    // advance the process to whatever stage the live record actually reflects.
+    const engrossedBillNumber = fiscalYear === 2027 ? 'H5501' : null
+    if (engrossedBillNumber) {
+      processed++
+      try {
+        const eng = await fetchBudgetBillStatus(engrossedBillNumber)
+        if (eng) {
+          let targetKey: string | null = null
+          if (eng.isSignedByGovernor) targetKey = 'GOVERNOR_REVIEW'
+          else if (eng.isConferenceReportFiled) targetKey = 'FINAL_TO_GOVERNOR'
+          else if (eng.isInConference) targetKey = 'CONFERENCE_COMMITTEE'
+          else if (eng.isPassedSenate) targetKey = 'SENATE_BUDGET'
+          if (targetKey) {
+            const asOf = eng.lastActionDate ? new Date(eng.lastActionDate) : null
+            updated += await advanceBudgetProcessTo(fiscalYear, targetKey, asOf, eng.sourceUrl)
+          }
+        } else {
+          warnings.push(`Engrossed bill ${engrossedBillNumber} status not retrievable`)
+        }
+      } catch (err) {
+        errors.push({
+          externalId: `engrossed-${engrossedBillNumber}`,
+          message: err instanceof Error ? err.message : String(err),
+        })
+      }
+    }
+
     const completedAt = new Date()
     const status = errors.length > 0 ? (updated > 0 ? 'partial' : 'failed') : 'success'
     const result: SyncResult = {
@@ -1741,6 +1775,54 @@ export async function reapStuckSyncs(maxRunMs = 5 * 60 * 1000): Promise<number> 
     console.log(`[reapStuckSyncs] Marked ${res.count} stuck "running" sync(s) as failed.`)
   }
   return res.count
+}
+
+/**
+ * Idempotently advance the budget-process timeline so `targetStageKey` is the
+ * CURRENT stage: every earlier stage COMPLETED, every later stage UPCOMING.
+ * Forward-only — if the timeline is already past the target (a later stage is
+ * current), it's a no-op, so a lagging upstream signal can never roll the
+ * process backward. Returns the number of stage rows changed (0 if already in
+ * the desired state, which keeps the daily cron quiet once it's caught up).
+ */
+async function advanceBudgetProcessTo(
+  fiscalYear: number,
+  targetStageKey: string,
+  asOfDate: Date | null,
+  sourceUrl: string | null,
+): Promise<number> {
+  const stages = await prisma.budgetProcessStage.findMany({
+    where: { fiscalYear },
+    orderBy: { stageOrder: 'asc' },
+  })
+  const targetIdx = stages.findIndex((s) => s.stageKey === targetStageKey)
+  if (targetIdx < 0) return 0
+  const currentIdx = stages.findIndex((s) => s.isCurrent)
+  // Forward-only: never move the current marker earlier than it already is.
+  if (currentIdx >= 0 && targetIdx < currentIdx) return 0
+
+  let changed = 0
+  for (let i = 0; i < stages.length; i++) {
+    const s = stages[i]
+    const desiredStatus = i < targetIdx ? 'COMPLETED' : i === targetIdx ? 'CURRENT' : 'UPCOMING'
+    const desiredCurrent = i === targetIdx
+    if (s.stageStatus !== desiredStatus || s.isCurrent !== desiredCurrent) {
+      await prisma.budgetProcessStage.update({
+        where: { id: s.id },
+        data: {
+          stageStatus: desiredStatus as any,
+          isCurrent: desiredCurrent,
+          ...(i === targetIdx && asOfDate
+            ? { stageDate: asOfDate, stageDateIsEstimate: false }
+            : {}),
+          ...(i === targetIdx && sourceUrl ? { sourceUrl } : {}),
+          sourceRetrievedAt: new Date(),
+        },
+      })
+      changed++
+    }
+  }
+  return changed
 }
 
 function getNormalizerForSource(source: AdapterSource): { normalize(raw: any): NormalizeResult<CanonicalLegislationInput> } {

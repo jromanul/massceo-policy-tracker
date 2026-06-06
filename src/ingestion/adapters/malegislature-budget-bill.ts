@@ -29,6 +29,8 @@ export interface BudgetBillStatus {
   // Derived status flags
   isPassedHouse: boolean
   isPassedSenate: boolean
+  isInConference: boolean
+  isConferenceReportFiled: boolean
   isSignedByGovernor: boolean
   isEnacted: boolean
 }
@@ -80,6 +82,21 @@ export async function fetchBudgetBillStatus(billNumber: string): Promise<BudgetB
           t.includes('engrossed') ||
           t.includes('read third time')),
     )
+    // A conference committee is appointed once both chambers pass differing
+    // versions: "Committee of conference appointed - (Michlewitz-Diggs-Smola)".
+    const isInConference = actionTexts.some(
+      (t) =>
+        t.includes('committee of conference appointed') ||
+        t.includes('conference committee appointed'),
+    )
+    // The conference report is filed when negotiators agree on a final version:
+    // "Conference committee report ..." / "report of the committee of conference".
+    const isConferenceReportFiled = actionTexts.some(
+      (t) =>
+        t.includes('conference committee report') ||
+        t.includes('report of the committee of conference') ||
+        (t.includes('committee of conference') && t.includes('report')),
+    )
     const isSignedByGovernor = actionTexts.some(
       (t) => t.includes('signed by the governor') || t.includes('approved by the governor'),
     )
@@ -97,6 +114,8 @@ export async function fetchBudgetBillStatus(billNumber: string): Promise<BudgetB
       fetchedAt: new Date(),
       isPassedHouse,
       isPassedSenate,
+      isInConference,
+      isConferenceReportFiled,
       isSignedByGovernor,
       isEnacted,
     }
