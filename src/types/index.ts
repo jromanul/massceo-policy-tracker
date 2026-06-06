@@ -13,7 +13,6 @@ export type {
   BoardDiscussionStatus,
   BoardInterestLevel,
   GovernanceLabel,
-  KnowledgeEntryType,
 } from '@prisma/client'
 
 // Re-export model types
@@ -27,7 +26,6 @@ export type {
   Tag,
   Note,
   HistoryEntry,
-  KnowledgeEntry,
   ExternalSourceRef,
   SyncLog,
 } from '@prisma/client'
@@ -44,7 +42,6 @@ import type {
   Tag,
   Document,
   HistoryEntry,
-  KnowledgeEntry,
 } from '@prisma/client'
 
 /** Recursively converts Date fields to strings. */
@@ -75,8 +72,6 @@ export type SerializedTag = Serialized<Tag>
 export type SerializedDocument = Serialized<Document>
 
 export type SerializedHistoryEntry = Serialized<HistoryEntry>
-
-export type SerializedKnowledgeEntry = Serialized<KnowledgeEntry>
 
 // ─── With Relations ───────────────────────────────────────────────────────────
 
@@ -113,15 +108,6 @@ export type PolicyIdeaWithRelations = PolicyIdea & {
   history?: HistoryEntry[]
 }
 
-export type KnowledgeEntryWithRelations = KnowledgeEntry & {
-  tags?: Tag[]
-  notes?: Note[]
-  legislativeItems?: LegislativeItem[]
-  budgetItems?: BudgetItem[]
-  hearings?: Hearing[]
-  policyIdeas?: PolicyIdea[]
-}
-
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
 
 export type DashboardStats = {
@@ -145,9 +131,6 @@ export type DashboardStats = {
     total: number
     byDisposition: Record<string, number>
     needsAttention: number // NEEDS_RESEARCH | REFERRED_FOR_DISCUSSION
-  }
-  knowledge: {
-    total: number
   }
 }
 
@@ -201,11 +184,6 @@ export type PolicyIdeaFilterParams = FilterParams & {
   issueArea?: string
   submittedById?: number
   archived?: boolean
-  tagNames?: string[]
-}
-
-export type KnowledgeFilterParams = FilterParams & {
-  entryType?: string
   tagNames?: string[]
 }
 

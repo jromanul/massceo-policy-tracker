@@ -105,9 +105,6 @@ export async function getBudgetItem(id: number) {
       policyIdeas: {
         select: { id: true, title: true, disposition: true },
       },
-      knowledgeEntries: {
-        select: { id: true, title: true, entryType: true, createdAt: true },
-      },
       budgetStages: {
         orderBy: { stage: 'asc' },
       },

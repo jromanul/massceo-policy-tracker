@@ -52,22 +52,6 @@ async function getIntegrityChecks(): Promise<IntegrityCheck[]> {
     severity: hearingsNoRelated > 3 ? 'warning' : 'info',
   })
 
-  // Knowledge entries with no relations
-  const knowledgeOrphaned = await prisma.knowledgeEntry.count({
-    where: {
-      legislativeItems: { none: {} },
-      budgetItems: { none: {} },
-      hearings: { none: {} },
-      policyIdeas: { none: {} },
-    },
-  })
-  checks.push({
-    label: 'Knowledge entries with no relations',
-    count: knowledgeOrphaned,
-    description: 'Knowledge/archive entries not linked to any tracked records.',
-    severity: knowledgeOrphaned > 5 ? 'warning' : 'info',
-  })
-
   // Unmapped committee codes
   const allCommittees = await prisma.legislativeItem.findMany({
     where: { assignedCommittee: { not: null } },

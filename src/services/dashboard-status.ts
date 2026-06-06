@@ -53,7 +53,7 @@ const FEEDS: FeedDef[] = [
     displayName: 'MA Legislature (Bills)',
     logSource: 'ma_legislature',
     maxAgeHours: 36,
-    count: () => prisma.legislativeItem.count({ where: { dataSource: 'MA_LEGISLATURE' as never } }),
+    count: () => prisma.legislativeItem.count({ where: { dataSource: 'MA_LEGISLATURE' as never, archived: false } }),
   },
   {
     key: 'ma_legislature_hearings',
@@ -67,14 +67,14 @@ const FEEDS: FeedDef[] = [
     displayName: 'Congress.gov (Federal)',
     logSource: 'congress_gov',
     maxAgeHours: 36,
-    count: () => prisma.legislativeItem.count({ where: { dataSource: 'CONGRESS_GOV' as never } }),
+    count: () => prisma.legislativeItem.count({ where: { dataSource: 'CONGRESS_GOV' as never, archived: false } }),
   },
   {
     key: 'ma_budget',
     displayName: 'MA Budget',
     logSource: 'ma_budget_budget',
     maxAgeHours: 36,
-    count: () => prisma.budgetItem.count(),
+    count: () => prisma.budgetItem.count({ where: { archived: false } }),
   },
   {
     key: 'openstates_peer_state_bills',

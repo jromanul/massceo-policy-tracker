@@ -108,18 +108,6 @@ enum GovernanceLabel {
   ARCHIVED
 }
 
-enum KnowledgeEntryType {
-  ARCHIVED_LEGISLATION
-  ARCHIVED_BUDGET
-  ARCHIVED_POLICY_IDEA
-  DISCUSSION_CONTEXT
-  HANDOFF_NOTE
-  HISTORICAL_NOTE
-  RESEARCH_SUMMARY
-  UNRESOLVED_QUESTION
-  BOARD_CONTEXT
-}
-
 enum DataSource {
   MANUAL
   SEED
@@ -189,7 +177,6 @@ model User {
   uploadedDocuments    Document[]        @relation("UploadedBy")
   notes                Note[]            @relation("NoteAuthor")
   historyEntries       HistoryEntry[]    @relation("HistoryAuthor")
-  createdKnowledge     KnowledgeEntry[]  @relation("KnowledgeAuthor")
 }
 
 model LegislativeItem {
@@ -241,7 +228,6 @@ model LegislativeItem {
   budgetItems        BudgetItem[]        @relation("LegislationBudget")
   policyIdeas        PolicyIdea[]        @relation("LegislationPolicies")
   externalSourceRefs ExternalSourceRef[]
-  knowledgeEntries   KnowledgeEntry[]    @relation("LegislationKnowledge")
   amendments         Amendment[]         @relation("LegislationAmendments")
   billActions        BillAction[]        @relation("BillActions")
 
@@ -292,7 +278,6 @@ model BudgetItem {
   legislativeItems LegislativeItem[]    @relation("LegislationBudget")
   hearings         Hearing[]            @relation("BudgetHearings")
   policyIdeas      PolicyIdea[]         @relation("BudgetPolicies")
-  knowledgeEntries KnowledgeEntry[]     @relation("BudgetKnowledge")
   budgetStages     BudgetStage[]        @relation("BudgetStages")
   amendments       Amendment[]          @relation("BudgetAmendments")
   processStages    BudgetProcessStage[]
@@ -335,7 +320,6 @@ model Hearing {
   notes              Note[]               @relation("HearingNotes")
   legislativeItems   LegislativeItem[]    @relation("LegislationHearings")
   budgetItems        BudgetItem[]         @relation("BudgetHearings")
-  knowledgeEntries   KnowledgeEntry[]     @relation("HearingKnowledge")
   processStages      BudgetProcessStage[]
 
   @@index([dataSource])
@@ -376,7 +360,6 @@ model PolicyIdea {
   history          HistoryEntry[]    @relation("PolicyHistory")
   legislativeItems LegislativeItem[] @relation("LegislationPolicies")
   budgetItems      BudgetItem[]      @relation("BudgetPolicies")
-  knowledgeEntries KnowledgeEntry[]  @relation("PolicyKnowledge")
 }
 
 model Document {
@@ -395,7 +378,6 @@ model Document {
   budgetItems      BudgetItem[]      @relation("BudgetDocuments")
   hearings         Hearing[]         @relation("HearingDocuments")
   policyIdeas      PolicyIdea[]      @relation("PolicyDocuments")
-  knowledgeEntries KnowledgeEntry[]  @relation("KnowledgeDocuments")
 }
 
 model Tag {
@@ -405,7 +387,6 @@ model Tag {
   budgetItems      BudgetItem[]      @relation("BudgetTags")
   hearings         Hearing[]         @relation("HearingTags")
   policyIdeas      PolicyIdea[]      @relation("PolicyTags")
-  knowledgeEntries KnowledgeEntry[]  @relation("KnowledgeTags")
 }
 
 model Note {
@@ -422,7 +403,6 @@ model Note {
   budgetItems      BudgetItem[]      @relation("BudgetNotes")
   hearings         Hearing[]         @relation("HearingNotes")
   policyIdeas      PolicyIdea[]      @relation("PolicyNotes")
-  knowledgeEntries KnowledgeEntry[]  @relation("KnowledgeNotes")
 }
 
 model HistoryEntry {
@@ -441,28 +421,6 @@ model HistoryEntry {
   budgetItemId      Int?
   policyIdea        PolicyIdea?      @relation("PolicyHistory", fields: [policyIdeaId], references: [id])
   policyIdeaId      Int?
-}
-
-model KnowledgeEntry {
-  id                  Int                @id @default(autoincrement())
-  title               String
-  content             String
-  entryType           KnowledgeEntryType
-  handoffNotes        String?
-  unresolvedQuestions String?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-
-  // Relations
-  createdBy        User?             @relation("KnowledgeAuthor", fields: [createdById], references: [id])
-  createdById      Int?
-  tags             Tag[]             @relation("KnowledgeTags")
-  documents        Document[]        @relation("KnowledgeDocuments")
-  notes            Note[]            @relation("KnowledgeNotes")
-  legislativeItems LegislativeItem[] @relation("LegislationKnowledge")
-  budgetItems      BudgetItem[]      @relation("BudgetKnowledge")
-  hearings         Hearing[]         @relation("HearingKnowledge")
-  policyIdeas      PolicyIdea[]      @relation("PolicyKnowledge")
 }
 
 model BillAction {

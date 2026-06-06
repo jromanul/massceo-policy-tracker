@@ -117,9 +117,6 @@ export async function getLegislativeItem(id: number) {
         select: { id: true, title: true, disposition: true, dateSubmitted: true },
       },
       externalSourceRefs: true,
-      knowledgeEntries: {
-        select: { id: true, title: true, entryType: true, createdAt: true },
-      },
       amendments: {
         orderBy: { createdAt: 'desc' },
       },

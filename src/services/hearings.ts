@@ -93,9 +93,6 @@ export async function getHearing(id: number) {
       budgetItems: {
         select: { id: true, name: true, fiscalYear: true, status: true, priority: true },
       },
-      knowledgeEntries: {
-        select: { id: true, title: true, entryType: true, createdAt: true },
-      },
     },
   })
 }

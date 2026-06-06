@@ -92,9 +92,6 @@ export async function getPolicyIdea(id: number) {
       budgetItems: {
         select: { id: true, name: true, fiscalYear: true, status: true },
       },
-      knowledgeEntries: {
-        select: { id: true, title: true, entryType: true, createdAt: true },
-      },
     },
   })
 }

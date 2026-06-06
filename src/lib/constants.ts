@@ -16,7 +16,6 @@ import type {
   TrackingTier,
   HearingType,
   PolicyOriginType,
-  KnowledgeEntryType,
 } from '@prisma/client'
 
 // ─── Status Colors ────────────────────────────────────────────────────────────
@@ -225,20 +224,6 @@ export const POLICY_ORIGIN_TYPE_DISPLAY: Record<PolicyOriginType, string> = {
   COMMITTEE: 'Committee',
 }
 
-// ─── Knowledge Entry Type ────────────────────────────────────────────────────
-
-export const KNOWLEDGE_ENTRY_TYPE_DISPLAY: Record<KnowledgeEntryType, string> = {
-  ARCHIVED_LEGISLATION: 'Archived Legislation',
-  ARCHIVED_BUDGET: 'Archived Budget',
-  ARCHIVED_POLICY_IDEA: 'Archived Policy Idea',
-  DISCUSSION_CONTEXT: 'Discussion Context',
-  HANDOFF_NOTE: 'Handoff Note',
-  HISTORICAL_NOTE: 'Historical Note',
-  RESEARCH_SUMMARY: 'Research Summary',
-  UNRESOLVED_QUESTION: 'Unresolved Question',
-  BOARD_CONTEXT: 'Board Context',
-}
-
 // ─── Priority Colors ──────────────────────────────────────────────────────────
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
@@ -405,14 +390,6 @@ export const POLICY_ORIGIN_TYPE_OPTIONS: {
   value: PolicyOriginType
 }[] = Object.entries(POLICY_ORIGIN_TYPE_DISPLAY).map(([value, label]) => ({
   value: value as PolicyOriginType,
-  label,
-}))
-
-export const KNOWLEDGE_ENTRY_TYPE_OPTIONS: {
-  label: string
-  value: KnowledgeEntryType
-}[] = Object.entries(KNOWLEDGE_ENTRY_TYPE_DISPLAY).map(([value, label]) => ({
-  value: value as KnowledgeEntryType,
   label,
 }))
 
