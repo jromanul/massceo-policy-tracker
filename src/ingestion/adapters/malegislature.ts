@@ -278,6 +278,43 @@ function isEORelevantHearing(title: string): boolean {
   return false
 }
 
+/**
+ * Fetch the authoritative hearing date/time from an event's detail page.
+ *
+ * The calendar listing collapses a multi-day hearing into a concatenated date
+ * header (e.g. "JUN 17JUN 23JUN 30"), and the adapter's "take the first MMM DD"
+ * heuristic can then anchor such a hearing to the wrong day — a June 23–30
+ * written-testimony-window EO hearing was showing as June 17. The detail page
+ * states the real schedule, e.g. "Tuesday June 23, 2026 at 11:00AM". Returns
+ * null on ANY failure (timeout, non-200, unparseable) so the caller keeps the
+ * calendar-derived date: this can only correct a date, never break the sync.
+ */
+async function fetchHearingSchedule(
+  eventId: string,
+): Promise<{ date: string; time?: string } | null> {
+  const url = `${BASE_URL}/Events/Hearings/Detail/${eventId}`
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15000)
+  try {
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+      signal: controller.signal,
+    })
+    if (!resp.ok) return null
+    const html = await resp.text()
+    // First "Weekday Month DD, YYYY at HH:MM AM/PM" is the hearing's start.
+    const m = html.match(
+      /(?:Sun|Mon|Tues|Wednes|Thurs|Fri|Satur)day,?\s+([A-Z][a-z]+\s+\d{1,2}),?\s+(\d{4})\s+at\s+(\d{1,2}:\d{2})\s*([AP]M)/i,
+    )
+    if (!m) return null
+    return { date: `${m[1].replace(/\s+/g, ' ').trim()}, ${m[2]}`, time: `${m[3]} ${m[4].toUpperCase()}` }
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export class MALegislatureHearingAdapter implements SourceAdapter<MALegislatureRawHearing> {
   readonly sourceName = 'ma_legislature' as const
   readonly displayName = 'MA Legislature Hearings'
@@ -407,6 +444,22 @@ export class MALegislatureHearingAdapter implements SourceAdapter<MALegislatureR
       seen.add(r.externalId)
       return true
     })
+
+    // Override each hearing's calendar-derived date with the authoritative
+    // date/time from its detail page. Done in parallel (bounded by each fetch's
+    // 15 s timeout) so the extra requests don't blow the cron's time budget;
+    // any fetch that fails leaves the calendar date untouched.
+    await Promise.all(
+      deduped.map(async (r) => {
+        const eid = r.data.eventId
+        if (!eid || !/^\d+$/.test(eid)) return
+        const sched = await fetchHearingSchedule(eid)
+        if (sched) {
+          r.data.date = sched.date
+          if (sched.time) r.data.time = sched.time
+        }
+      }),
+    )
 
     console.log(
       `[MALegislatureHearingAdapter] Found ${deduped.length} hearings across ${monthsToFetch.length} months`,
