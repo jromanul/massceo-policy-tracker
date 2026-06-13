@@ -35,6 +35,30 @@ function matchesEOKeywords(text: string): boolean {
   return EO_AMENDMENT_KEYWORDS.some((kw) => lower.includes(kw))
 }
 
+/**
+ * Fetch with a hard timeout. The budget-debate amendment listings are large
+ * (560+ amendments per chamber) and malegislature.gov occasionally stalls on
+ * them. A bare fetch() has no timeout, so a stalled response hangs until
+ * Vercel kills the whole function at its 60 s cap — which leaves the SyncLog
+ * row stuck in "running" forever (it never reaches the completion write). An
+ * AbortController timeout makes a slow page fail FAST with a terminal error so
+ * the sync is logged as `failed` and simply retried on the next cron, instead
+ * of hanging and going stale.
+ */
+async function fetchWithTimeout(
+  url: string,
+  opts: RequestInit,
+  timeoutMs = 25000,
+): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...opts, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export interface AmendmentScrapeResult {
   amendmentNumber: string
   sponsor: string
@@ -65,7 +89,7 @@ export async function scrapeAmendments(
 
   console.log(`[AmendmentScraper] Fetching ${url}`)
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
   })
 
